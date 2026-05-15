@@ -139,7 +139,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
       <div style="font-family:'Abril Fatface',serif;font-size:72px;line-height:.9;color:#6845C6" id="ms-pct">—</div>
       <div style="font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px" id="ms-pct-lbl">of this week filled</div>
       <div id="last-week-row" style="margin-top:6px;display:none;justify-content:flex-end;align-items:baseline;gap:8px">
-        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Last week same point:</span>
+        <span id="lw-label" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Last week same point:</span>
         <span style="font-family:'Abril Fatface',serif;font-size:28px;line-height:1" id="ms-last-week">—</span>
       </div>
     </div>
@@ -156,7 +156,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 <div class="page" id="p1">
   <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
   <div class="pg-h">Main Stage — sales trajectory</div>
-  <div class="pg-sub">Last 4 completed weeks per night from Main Stage Bar Show tab. Wed 39.6% · Thu 51.8% · Fri 91.4% · Sat 94.3% avg final sell-through.</div>
+  <div class="pg-sub">Real data from Main Stage Bar Show tab, last 4 completed weeks. Fri avg 91.4% · Sat avg 94.3% — yes, close to sellout most nights.</div>
   <div class="chart-wrap"><canvas id="trajChart"></canvas></div>
   <div class="traj-legend">
     <div class="tl-item"><span class="tl-swatch" style="background:var(--wed)"></span>Wednesday</div>
@@ -326,8 +326,22 @@ function buildMSRows(shows,isNext,curM){
   document.getElementById('ms-bar').style.width=pct+'%';
   document.getElementById('ms-sold').textContent=tot+' sold';
   const lwRow=document.getElementById('last-week-row'),lwEl=document.getElementById('ms-last-week');
-  if(!isNext){const lw=getSameTimeLastWeek(curM,shows);if(lw){lwEl.textContent=lw+'%';lwEl.style.color=parseFloat(pct)>=parseFloat(lw)?'#1A9B68':'#D04068';lwRow.style.display='flex';}else lwRow.style.display='none';}
-  else lwRow.style.display='none';
+  const lwLabel=document.getElementById('lw-label');
+  if(!isNext){
+    const lw=getSameTimeLastWeek(curM,shows);
+    if(lw&&parseFloat(lw)>0){
+      lwEl.textContent=lw+'%';
+      lwEl.style.color=parseFloat(pct)>=parseFloat(lw)?'#1A9B68':'#D04068';
+      if(lwLabel)lwLabel.textContent='Last week same point:';
+      lwRow.style.display='flex';
+    } else {
+      // No comparison data yet — show friendly message instead of hiding
+      lwEl.textContent='—';
+      lwEl.style.color='var(--muted)';
+      if(lwLabel)lwLabel.textContent='More comparison data next week';
+      lwRow.style.display='flex';
+    }
+  } else lwRow.style.display='none';
   shows.forEach(s=>{
     const done=isCompleted(s.date);
     const pv=s.sold/s.cap*100;
@@ -451,7 +465,11 @@ const allIndiv=[...regularShows,...replayShows];
 // Grid
 const grid=document.getElementById('indivGrid');
 let lastSect='';
-[...regularShows,...replayShows].sort((a,b)=>a.daysOut-b.daysOut).forEach(s=>{
+const recurringFilter = s => {
+  const recurring = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
+  return !(recurring.includes(s.name) && s.daysOut > 7);
+};
+[...regularShows,...replayShows].filter(recurringFilter).sort((a,b)=>a.daysOut-b.daysOut).forEach(s=>{
   const sn=s.section==='replay'?'Replay Festival — July 3 to Aug 2':'Regular shows';
   if(sn!==lastSect){const lbl=document.createElement('div');lbl.className='sect-label';lbl.textContent=sn;grid.appendChild(lbl);lastSect=sn;}
   const row=document.createElement('div');row.className='ind-row';
@@ -488,7 +506,8 @@ function buildCards(shows,id){
     el.appendChild(card);
   });
 }
-const withSales=allIndiv.filter(s=>s.pct>0).sort((a,b)=>b.pct-a.pct);
+const recurringNames2=['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
+const withSales=allIndiv.filter(s=>s.pct>0&&!recurringNames2.includes(s.name)).sort((a,b)=>b.pct-a.pct);
 buildCards(withSales.slice(0,3),'top3');
 buildCards([...withSales].reverse().slice(0,3),'bot3');
 
@@ -541,7 +560,7 @@ function showMSDetail(s){
        pointRadius:X.map((_,i)=>i===idx?12:0),pointHoverRadius:14,pointBackgroundColor:dc,fill:false,tension:0,spanGaps:false,order:1},
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'}}},
-              y:{min:0,max:80,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+'%'}}}}}),
+              y:{min:0,max:100,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+'%'}}}}}),
     `Dot = this show now · Shaded = typical ${s.day} avg${s.day==='Wednesday'?' (est.)':''} · Last 4 ${s.day}s ended at ~${da[da.length-1].toFixed(0)}% (comedy fest period — will update live)`);
 }
 function showDetail(s){
@@ -709,7 +728,14 @@ async function loadLiveData() {
       const perfISO = perfDate.getFullYear() + '-' +
         String(perfDate.getMonth()+1).padStart(2,'0') + '-' +
         String(perfDate.getDate()).padStart(2,'0');
-      if (perfISO < todayISO) continue; // skip past shows
+      // For Main Stage: include shows up to 6 days ago (covers current week's passed shows)
+      // For all other shows: skip past shows
+      const daysAgo = (new Date(todayISO) - perfDate) / 86400000;
+      if (name === 'Main Stage') {
+        if (daysAgo > 6) continue; // only keep within current week window
+      } else {
+        if (perfISO < todayISO) continue; // skip past individual shows
+      }
 
       if (name === 'Main Stage') {
         // Group by week
@@ -723,9 +749,14 @@ async function loadLiveData() {
         const isReplay = perfISO >= '2026-07-03' && perfISO <= '2026-08-02';
         const sect = isReplay ? 'replay' : 'regular';
         const dateStr = perfDate.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+        const daysToShow = daysUntil(perfDate);
+        // Hide recurring format shows (Bar Show, Sunday Laughternoons) if > 7 days away
+        const recurringNames = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
+        if (recurringNames.includes(name) && daysToShow > 7) continue;
+
         indivLive.push({
           name, dateStr, date: perfDate,
-          daysOut: daysUntil(perfDate),
+          daysOut: daysToShow,
           sold, cap, pct: cap ? sold/cap*100 : 0,
           section: sect, daysSince: null
         });
