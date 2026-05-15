@@ -264,10 +264,10 @@ const X=['14d','12d','10d','9d','8d','7d','6d','5d','3d','2d','1d','0d','Show'];
 // Final sell-through: Wed 39.6%, Thu 51.8%, Fri 91.4%, Sat 94.3%
 // Shape from full-season trajectory, scaled to last-4 endpoints
 // Will update automatically on each refresh once connected to live Google Sheet
-const avgWed=[2.44,3.01,3.45,3.65,4.14,5.73,6.70,7.73,14.53,17.24,23.59,33.00,39.64];
-const avgThu=[1.94,2.39,2.73,2.90,3.30,4.57,5.36,6.18,11.58,18.09,25.97,40.00,51.79];
-const avgFri=[5.10,5.23,7.04,7.85,8.32,9.38,10.70,12.86,23.23,29.18,44.36,65.00,91.43];
-const avgSat=[8.18,11.11,12.44,13.74,14.67,15.64,17.98,19.84,29.30,35.27,50.82,74.00,94.29];
+const avgWed=[2.44,3.01,3.45,3.65,4.14,5.73,6.70,7.73,14.53,17.24,23.59,33.00,null];
+const avgThu=[1.94,2.39,2.73,2.90,3.30,4.57,5.36,6.18,11.58,18.09,25.97,40.00,null];
+const avgFri=[5.10,5.23,7.04,7.85,8.32,9.38,10.70,12.86,23.23,29.18,44.36,65.00,null];
+const avgSat=[8.18,11.11,12.44,13.74,14.67,15.64,17.98,19.84,29.30,35.27,50.82,74.00,null];
 const dayAvgs={Wednesday:avgWed,Thursday:avgThu,Friday:avgFri,Saturday:avgSat};
 // '2d' added: D2I[2]=9, D2I[1]=10, D2I[0]=11
 const D2I={14:0,13:0,12:1,11:2,10:2,9:3,8:4,7:5,6:6,5:7,4:7,3:8,2:9,1:10,0:11,16:0,15:0};
@@ -389,11 +389,11 @@ window.trajChartInst=new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
   {data:avgSat,borderColor:'rgba(176,124,8,.55)', borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
   ...getWeekShows(curM).map(s=>{
     const dc   = DAY_COL[s.day]||'#6845C6';
-    const done = isCompleted(s.date);
+    const done = s.daysOut < 0 || isCompleted(s.date);
     const rawD2 = Math.max(Math.min(Math.round(s.daysOut),14),0);
     const idx  = done ? 12 : (D2I[rawD2]??6);
-    const size = done ? 8 : 10;
-    const col  = done ? dc+'99' : dc;
+    const size = done ? 9 : 11;
+    const col  = done ? dc+'88' : dc;
     return{data:X.map((_,i)=>i===idx?s.pct:null),
       borderColor:col,backgroundColor:col,borderWidth:0,
       pointRadius:X.map((_,i)=>i===idx?size:0),
@@ -423,10 +423,11 @@ function refreshTrajDots() {
 
   allWeekShows.forEach(s => {
     const dc   = DAY_COL[s.day] || '#6845C6';
-    const done = isCompleted(s.date);
-    const idx  = done ? 11 : (D2I[Math.max(Math.min(Math.round(s.daysOut),14),0)] ?? 6);
-    const size = done ? 8 : 10;
-    const col  = done ? dc+'99' : dc;
+    const done = s.daysOut < 0 || isCompleted(s.date);
+    const rawDR = Math.max(Math.min(Math.round(s.daysOut),14),0);
+    const idx  = done ? 12 : (D2I[rawDR] ?? 6);
+    const size = done ? 9 : 11;
+    const col  = done ? dc+'88' : dc;
     inst.data.datasets.push({
       data: X.map((_, i) => i === idx ? s.pct : null),
       borderColor: col, backgroundColor: col, borderWidth: 0,
