@@ -511,27 +511,85 @@ const withSales=allIndiv.filter(s=>s.pct>0&&!recurringNames2.includes(s.name)).s
 buildCards(withSales.slice(0,3),'top3');
 buildCards([...withSales].reverse().slice(0,3),'bot3');
 
-// Flags
-const fn=document.getElementById('flagsNoSale');
-const flagged=allIndiv.filter(s=>s.pct>0&&s.daysSince>=4).sort((a,b)=>b.daysSince-a.daysSince);
-if(!flagged.length)fn.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--muted);padding:10px 0">No current plateaus</div>';
-flagged.forEach(s=>{
-  const sev=s.daysSince>10?'red':'amber';
-  const card=document.createElement('div');card.className=`flag-card ${sev}`;
-  card.onclick=()=>showDetail(s);
-  card.innerHTML=`<span class="fc-badge ${sev}">${s.daysSince} days no sales</span><div class="fc-title">${s.name}</div><div class="fc-body">${s.pct.toFixed(1)}% · ${s.sold}/${s.cap} · ${s.daysOut} days to show</div>`;
-  fn.appendChild(card);
-});
-[
-  {sev:'mint',badge:'Strong early mover',title:'Kate Dehnert — Replay Fest',body:'43.6% sold, 56+ days out. Leading the festival.',show:replayShows.find(s=>s.name==='Kate Dehnert')},
-  {sev:'sky', badge:'Strong early mover',title:'Kate Dolan — Replay Fest',  body:'37.1% sold, 51+ days out.',show:replayShows.find(s=>s.name==='Kate Dolan')},
-  {sev:'lav', badge:'Plateau',title:'The Witchy Girls — 28 May',body:'No new sales since 18 March (57 days). 18.6% sold, 14 days out.',show:regularShows[0]},
-].forEach(t=>{
-  const card=document.createElement('div');card.className=`flag-card ${t.sev}`;
-  if(t.show)card.onclick=()=>showDetail(t.show);
-  card.innerHTML=`<span class="fc-badge ${t.sev}">${t.badge}</span><div class="fc-title">${t.title}</div><div class="fc-body">${t.body}</div>`;
-  document.getElementById('flagsTrend').appendChild(card);
-});
+// ── FLAGS — all dynamic from live data ────────────────────────────────
+// Plateau detection requires tracking sheet data (starts building from tonight)
+// Trend watch auto-detects from live sell-through percentages
+
+function buildFlags(shows) {
+  const fn = document.getElementById('flagsNoSale');
+  const ft = document.getElementById('flagsTrend');
+  if (!fn || !ft) return;
+  fn.innerHTML = ''; ft.innerHTML = '';
+
+  // ── NO SALES IN 4+ DAYS ─────────────────────────────────────────
+  // Requires tracking sheet history — honest message until we have data
+  const withPlateauData = shows.filter(s => s.pct > 0 && s.daysSince >= 4);
+
+  if (withPlateauData.length === 0) {
+    fn.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--muted);line-height:1.5;padding:6px 0">
+      Plateau detection builds as the tracking spreadsheet accumulates daily snapshots.<br>
+      Check back in a few days — any show that stops selling will appear here automatically.
+    </div>`;
+  } else {
+    withPlateauData.sort((a,b)=>b.daysSince-a.daysSince).forEach(s => {
+      const sev = s.daysSince > 10 ? 'red' : 'amber';
+      const card = document.createElement('div'); card.className = `flag-card ${sev}`;
+      card.onclick = () => showDetail(s);
+      card.innerHTML = `<span class="fc-badge ${sev}">${s.daysSince} days no sales</span>
+        <div class="fc-title">${s.name}</div>
+        <div class="fc-body">${s.pct.toFixed(1)}% · ${s.sold}/${s.cap} · ${s.daysOut} days to show</div>`;
+      fn.appendChild(card);
+    });
+  }
+
+  // ── TREND WATCH — auto-detected from live sell-through ──────────
+  const upcoming = shows.filter(s => s.daysOut > 0 && s.pct !== undefined);
+  let trendCards = 0;
+
+  // Strong early movers: > 30% sold with > 30 days to go
+  const earlyMovers = upcoming.filter(s => s.pct >= 30 && s.daysOut > 30)
+    .sort((a,b) => b.pct - a.pct);
+  earlyMovers.forEach(s => {
+    const card = document.createElement('div'); card.className = 'flag-card mint';
+    card.onclick = () => showDetail(s);
+    card.innerHTML = `<span class="fc-badge mint">Strong early mover</span>
+      <div class="fc-title">${s.name}</div>
+      <div class="fc-body">${s.pct.toFixed(1)}% sold with ${s.daysOut} days to go.</div>`;
+    ft.appendChild(card); trendCards++;
+  });
+
+  // Good momentum: 15–30% with > 30 days to go
+  const goodMomentum = upcoming.filter(s => s.pct >= 15 && s.pct < 30 && s.daysOut > 30)
+    .sort((a,b) => b.pct - a.pct).slice(0, 2);
+  goodMomentum.forEach(s => {
+    const card = document.createElement('div'); card.className = 'flag-card sky';
+    card.onclick = () => showDetail(s);
+    card.innerHTML = `<span class="fc-badge sky">Good momentum</span>
+      <div class="fc-title">${s.name}</div>
+      <div class="fc-body">${s.pct.toFixed(1)}% sold, ${s.daysOut} days out.</div>`;
+    ft.appendChild(card); trendCards++;
+  });
+
+  // Needs attention: < 5% sold with < 21 days to go (and has sold something)
+  const needsAttention = upcoming.filter(s => s.pct > 0 && s.pct < 5 && s.daysOut < 21)
+    .sort((a,b) => a.daysOut - b.daysOut);
+  needsAttention.forEach(s => {
+    const card = document.createElement('div'); card.className = 'flag-card red';
+    card.onclick = () => showDetail(s);
+    card.innerHTML = `<span class="fc-badge red">Needs attention</span>
+      <div class="fc-title">${s.name}</div>
+      <div class="fc-body">${s.pct.toFixed(1)}% sold with only ${s.daysOut} days to go.</div>`;
+    ft.appendChild(card); trendCards++;
+  });
+
+  if (trendCards === 0) {
+    ft.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--muted);padding:6px 0">
+      No unusual trends detected right now. Flags appear automatically when shows move outside normal patterns.
+    </div>`;
+  }
+}
+
+buildFlags(allIndiv);
 
 /* Overlay */
 let ovInst=null;
@@ -891,23 +949,7 @@ function appendCard(s, id) {
 }
 
 function rebuildFlags(shows) {
-  const fn = document.getElementById('flagsNoSale');
-  if (!fn) return;
-  fn.innerHTML = '';
-  const flagged = shows.filter(s=>s.pct>0&&s.daysSince>=4).sort((a,b)=>b.daysSince-a.daysSince);
-  if (!flagged.length) {
-    fn.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--muted);padding:10px 0">No current plateaus</div>';
-  } else {
-    flagged.forEach(s=>{
-      const sev=s.daysSince>10?'red':'amber';
-      const card=document.createElement('div');card.className=`flag-card ${sev}`;
-      card.onclick=()=>showDetail(s);
-      card.innerHTML=`<span class="fc-badge ${sev}">${s.daysSince} days no sales</span>
-        <div class="fc-title">${s.name}</div>
-        <div class="fc-body">${s.pct.toFixed(1)}% · ${s.sold}/${s.cap} · ${s.daysOut} days to show</div>`;
-      fn.appendChild(card);
-    });
-  }
+  buildFlags(shows);
 }
 
 // Kick off on page load
