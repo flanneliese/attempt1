@@ -855,7 +855,10 @@ async function loadLiveData() {
       String(today.month+1).padStart(2,'0') + '-' +
       String(today.date).padStart(2,'0');
 
-    const liveFortnightCount = {}; // tracks occurrences of fortnight-limited shows
+    // ── COLLECT all individual shows first, then sort by date, THEN limit recurring ──
+    // Must sort first because Automation tab is sorted by perf_id not date.
+    // Without sorting, July shows get counted as "first 2" and May/June ones get cut.
+    const allLiveShows = [];
     for (let i = 1; i < autoRows.length; i++) {
       const row  = autoRows[i];
       const name = (row[0]||'').trim();
@@ -871,51 +874,46 @@ async function loadLiveData() {
       const perfISO = perfDate.getFullYear() + '-' +
         String(perfDate.getMonth()+1).padStart(2,'0') + '-' +
         String(perfDate.getDate()).padStart(2,'0');
-      // For Main Stage: include shows up to 6 days ago (covers current week's passed shows)
-      // For all other shows: skip past shows
       const daysAgo = (new Date(todayISO) - perfDate) / 86400000;
-      if (name === 'Main Stage') {
-        if (daysAgo > 6) continue; // only keep within current week window
-      } else {
-        if (perfISO < todayISO) continue; // skip past individual shows
-      }
 
       if (name === 'Main Stage') {
-        // Group by week
-        const wk = mondayISO(perfDate);
+        if (daysAgo > 6) continue;
+        const wk  = mondayISO(perfDate);
         if (!msWeeksLive[wk]) msWeeksLive[wk] = {wed:0,thu:0,fri:0,sat:0};
-        const dow = perfDate.getDay(); // 3=Wed 4=Thu 5=Fri 6=Sat
-        const key = {3:'wed',4:'thu',5:'fri',6:'sat'}[dow];
+        const key = {3:'wed',4:'thu',5:'fri',6:'sat'}[perfDate.getDay()];
         if (key) msWeeksLive[wk][key] = sold;
       } else {
-        // Individual show — detect section by date
+        if (perfISO < todayISO) continue;
         const isReplay = perfISO >= '2026-07-03' && perfISO <= '2026-08-02';
-        const sect = isReplay ? 'replay' : 'regular';
-        const dateStr = perfDate.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
-        const daysToShow = daysUntil(perfDate);
-        // Recurring show rules:
-        // - Sunday Laughternoons: only within 7 days
-        // - Bar Show, Something Good: only next 2 occurrences (fortnight view)
-        // - Wax Quizzical: always shown (individual show)
-        const nearOnly   = ['Sunday Laughernoons','Sunday Laughternoons'];
-        const fortnight  = ['Bar Show','Something Good'];
-        const isNearOnly = nearOnly.some(r => name.toLowerCase().includes(r.toLowerCase()));
-        const isFort     = fortnight.some(r => name.toLowerCase().includes(r.toLowerCase()));
-        if (isNearOnly && daysToShow > 7) continue;
-        if (isFort) {
-          const fKey = fortnight.find(r => name.toLowerCase().includes(r.toLowerCase()));
-          if (!liveFortnightCount[fKey]) liveFortnightCount[fKey] = 0;
-          liveFortnightCount[fKey]++;
-          if (liveFortnightCount[fKey] > 2) continue;
-        }
-
-        indivLive.push({
+        const dateStr  = perfDate.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+        allLiveShows.push({
           name, dateStr, date: perfDate,
-          daysOut: daysToShow,
+          daysOut: daysUntil(perfDate),
           sold, cap, pct: cap ? sold/cap*100 : 0,
-          section: sect, daysSince: null
+          section: isReplay ? 'replay' : 'regular',
+          daysSince: null
         });
       }
+    }
+
+    // Sort nearest first BEFORE applying occurrence limits
+    allLiveShows.sort((a,b) => a.daysOut - b.daysOut);
+
+    // Apply recurring show rules in date order
+    const nearOnlyNames = ['sunday laughernoons','sunday laughternoons'];
+    const fortnightNames = ['bar show','something good'];
+    const fortOccCount   = {};
+    for (const s of allLiveShows) {
+      const nl = s.name.toLowerCase();
+      const isNearOnly = nearOnlyNames.some(r => nl.includes(r));
+      const isFort     = fortnightNames.some(r => nl.includes(r));
+      if (isNearOnly && s.daysOut > 7) continue;
+      if (isFort) {
+        const fKey = fortnightNames.find(r => nl.includes(r));
+        fortOccCount[fKey] = (fortOccCount[fKey]||0) + 1;
+        if (fortOccCount[fKey] > 2) continue;
+      }
+      indivLive.push(s);
     }
 
     // ── 2. TRACKING SHEET — daily history for graphs ───────────────
