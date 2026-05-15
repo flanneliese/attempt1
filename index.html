@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920,initial-scale=1">
+<title>Comedy Republic · Sales Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Nunito:wght@400;700;800;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+:root{
+  --bg:#FAF8FF;--bg2:#F0ECFA;--card:#FFF;
+  --text:#1C1830;--mid:#5A5278;--muted:rgba(28,24,48,.38);
+  --rule:rgba(28,24,48,.08);--shad:0 2px 14px rgba(28,24,48,.07);
+  --wed:#2668AD;--thu:#D04068;--fri:#6845C6;--sat:#B07C08;
+  --p-great:#1A9B68;--p-good:#2668AD;--p-warn:#C47A00;--p-bad:#D04068;
+}
+body{background:var(--bg);font-family:'Nunito',sans-serif;color:var(--text)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 50% 40% at 8% 12%,rgba(208,64,104,.06) 0%,transparent 65%),
+             radial-gradient(ellipse 45% 35% at 93% 88%,rgba(104,69,198,.06) 0%,transparent 65%)}
+#deco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.dc{position:absolute;font-size:var(--s,12px);color:var(--c);animation:fdrift var(--d,12s) var(--dl,0s) infinite linear;opacity:0;user-select:none}
+@keyframes fdrift{0%{opacity:0;transform:translateY(4px)}15%{opacity:1}85%{opacity:.8}100%{opacity:0;transform:translateY(-20px)}}
+.pages{position:relative;width:100%;height:100%;z-index:1}
+.page{position:absolute;inset:0;padding:28px 52px 42px;opacity:0;transform:translateY(5px);transition:opacity .6s ease,transform .6s ease;pointer-events:none}
+.page.active{opacity:1;transform:none;pointer-events:auto}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.hd-logo{font-family:'Abril Fatface',serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hd-r{display:flex;align-items:center;gap:12px}
+.live-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--bg2);font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--muted)}
+.dot-l{width:6px;height:6px;border-radius:50%;background:var(--p-great);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.clk{font-family:'Space Mono',monospace;font-size:13px;color:var(--muted)}
+#dots{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:20}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--rule);border:1.5px solid var(--muted);cursor:pointer;transition:all .3s}
+.dot.on{background:var(--text);border-color:var(--text);transform:scale(1.5)}
+#pauseBtn{position:fixed;bottom:12px;right:22px;z-index:30;width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--rule);font-size:13px;cursor:pointer;color:var(--mid);display:flex;align-items:center;justify-content:center}
+
+/* Main Stage rows */
+.show-row{display:flex;align-items:center;background:var(--card);border-radius:16px;padding:14px 22px;box-shadow:var(--shad);border:1px solid var(--rule);margin-bottom:9px;transition:opacity .5s,filter .5s,box-shadow .2s,transform .15s}
+.show-row.clickable{cursor:pointer}
+.show-row.clickable:hover{box-shadow:0 4px 20px rgba(28,24,48,.13);transform:translateY(-1px)}
+.show-row.done{opacity:.45;filter:grayscale(.4)}
+.sr-day{font-family:'Abril Fatface',serif;font-size:24px;width:160px;flex-shrink:0}
+.sr-bar-wrap{flex:1;height:11px;border-radius:7px;background:var(--rule);overflow:hidden;margin:0 20px}
+.sr-bar-fill{height:100%;border-radius:7px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.sr-num{font-family:'Space Mono',monospace;font-size:17px;font-weight:700;width:106px;text-align:right;flex-shrink:0}
+.sr-meta{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);width:136px;text-align:right;flex-shrink:0;padding-left:12px}
+.sr-meta.locked{font-family:'Abril Fatface',serif;font-size:20px;letter-spacing:.01em;text-transform:none;color:inherit}
+.sr-arrow{font-size:13px;color:var(--muted);margin-left:10px;flex-shrink:0}
+.bigbar-track{height:13px;border-radius:8px;background:var(--rule);overflow:hidden;margin-bottom:5px}
+.bigbar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--thu),var(--fri));transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+.week-toggle{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:7px 16px;border-radius:20px;background:var(--bg2);border:1px solid var(--rule);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;color:var(--mid);cursor:pointer;transition:background .2s}
+.week-toggle:hover{background:rgba(28,24,48,.1)}
+
+/* Trajectory */
+.pg-h{font-family:'Abril Fatface',serif;font-size:34px;color:var(--text);margin-bottom:4px}
+.pg-sub{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:14px}
+.chart-wrap{position:relative;height:385px;margin-bottom:14px}
+.traj-legend{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.tl-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--mid)}
+.tl-swatch{width:28px;height:4px;border-radius:3px;flex-shrink:0}
+.tl-hint{font-size:11px;font-weight:700;color:var(--muted);margin-left:auto}
+
+/* Upcoming shows — compact to fit all 41 shows */
+.indiv-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start}
+.sect-label{grid-column:1/-1;font-size:10px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:5px 0 3px;border-top:1px solid var(--rule);margin-top:3px}
+.sect-label:first-child{border-top:none;margin-top:0}
+.ind-row{display:flex;align-items:center;background:var(--card);border-radius:10px;padding:8px 12px;box-shadow:var(--shad);border:1px solid var(--rule);cursor:pointer;transition:box-shadow .2s,transform .15s}
+.ind-row:hover{box-shadow:0 3px 14px rgba(28,24,48,.12);transform:translateY(-1px)}
+/* 0% shows: no dimming — flat bar tells the story */
+  .ir-nos{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);flex:1;text-align:center}
+.ir-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-right:8px}
+.ir-name{font-family:'Abril Fatface',serif;font-size:13px;flex:0 0 158px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ir-date{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);flex:0 0 56px}
+.ir-bar-wrap{flex:1;height:6px;border-radius:4px;background:var(--rule);overflow:hidden;margin:0 8px}
+.ir-bar-fill{height:100%;border-radius:4px}
+.ir-pct{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;flex:0 0 38px;text-align:right}
+.ir-arr{font-size:10px;color:var(--muted);margin-left:4px;flex-shrink:0}
+
+/* Highs & Lows */
+.tb-layout{display:grid;grid-template-columns:1fr 1fr;gap:0;height:calc(100vh - 150px);border-radius:20px;overflow:hidden;box-shadow:var(--shad)}
+.tb-col{padding:18px 22px}
+.tb-col-top{background:#FFFCF0}
+.tb-col-bot{background:#DDD6F0;border-left:2px solid rgba(104,69,198,.2)}
+.tb-col-label{font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.tb-card{border-radius:14px;padding:14px 18px;margin-bottom:9px;border:1px solid transparent;cursor:pointer;transition:box-shadow .2s,transform .15s}
+.tb-card:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(28,24,48,.12)}
+.tb-col-top .tb-card{background:white;border-color:rgba(176,124,8,.15)}
+.tb-col-bot .tb-card{background:rgba(255,255,255,.75);border-color:rgba(104,69,198,.2)}
+.tb-show-name{font-family:'Abril Fatface',serif;font-size:19px;margin-bottom:2px}
+.tb-meta{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px}
+.tb-big{font-family:'Abril Fatface',serif;font-size:40px;line-height:1}
+.tb-bar-track{height:8px;border-radius:5px;background:var(--rule);overflow:hidden;margin-top:8px}
+.tb-bar-fill{height:100%;border-radius:5px}
+
+/* Flags */
+.flags-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.section-label{font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.flag-card{border-radius:14px;border-left:4px solid;padding:13px 17px;background:var(--card);box-shadow:var(--shad);margin-bottom:8px;border-top:1px solid var(--rule);border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);cursor:pointer;transition:box-shadow .2s,transform .15s}
+.flag-card:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(28,24,48,.12)}
+.flag-card.red{border-left-color:var(--p-bad)}.flag-card.amber{border-left-color:var(--p-warn)}
+.flag-card.lav{border-left-color:#6845C6}.flag-card.mint{border-left-color:var(--p-great)}.flag-card.sky{border-left-color:var(--p-good)}
+.fc-badge{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:9px;margin-bottom:4px}
+.fc-badge.red{background:rgba(208,64,104,.1);color:var(--p-bad)}.fc-badge.amber{background:rgba(196,122,0,.1);color:var(--p-warn)}
+.fc-badge.lav{background:rgba(104,69,198,.1);color:#6845C6}.fc-badge.mint{background:rgba(26,155,104,.1);color:var(--p-great)}.fc-badge.sky{background:rgba(38,104,173,.1);color:var(--p-good)}
+.fc-title{font-family:'Abril Fatface',serif;font-size:16px;margin-bottom:2px}
+.fc-body{font-size:12px;font-weight:700;color:var(--mid);line-height:1.3}
+
+/* Overlay */
+#overlay{position:fixed;inset:0;z-index:100;background:var(--bg);padding:36px 56px;opacity:0;pointer-events:none;transition:opacity .35s ease;overflow-y:auto}
+#overlay.visible{opacity:1;pointer-events:auto}
+.back-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;border-radius:22px;background:var(--bg2);border:1px solid var(--rule);font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:var(--mid);cursor:pointer;margin-bottom:24px;text-transform:uppercase;letter-spacing:.06em}
+#ovTitle{font-family:'Abril Fatface',serif;font-size:58px;line-height:.92;margin-bottom:8px}
+#ovMeta{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:20px}
+#ovStats{display:flex;gap:28px;margin-bottom:28px}
+.ds{display:flex;flex-direction:column;gap:3px}
+.ds-l{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ds-v{font-family:'Abril Fatface',serif;font-size:48px;line-height:1}
+#ovChartArea{position:relative;height:270px;margin-bottom:14px}
+#ovNote{font-size:13px;font-weight:700;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="deco"></div>
+<div class="pages">
+
+<!-- P1: MAIN STAGE -->
+<div class="page active" id="p0">
+  <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk" id="clk0"></span></div></div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+    <div>
+      <div style="font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#6845C6;margin-bottom:5px" id="weekTag">This Week</div>
+      <div style="font-family:'Abril Fatface',serif;font-size:52px;line-height:.92;color:var(--text)">Main Stage</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:'Abril Fatface',serif;font-size:72px;line-height:.9;color:#6845C6" id="ms-pct">—</div>
+      <div style="font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:3px" id="ms-pct-lbl">of this week filled</div>
+      <div id="last-week-row" style="margin-top:6px;display:none;justify-content:flex-end;align-items:baseline;gap:8px">
+        <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Last week same point:</span>
+        <span style="font-family:'Abril Fatface',serif;font-size:28px;line-height:1" id="ms-last-week">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="bigbar-track"><div class="bigbar-fill" id="ms-bar"></div></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:11px"><span id="ms-sold">—</span><span>Goal: 560 seats ✦ sell out every night</span></div>
+  <div id="ms-rows"></div>
+  <div style="display:flex;justify-content:flex-end;margin-top:6px">
+    <button class="week-toggle" id="weekToggle" onclick="toggleWeek()">Next Week →</button>
+  </div>
+</div>
+
+<!-- P2: TRAJECTORY -->
+<div class="page" id="p1">
+  <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
+  <div class="pg-h">Main Stage — sales trajectory</div>
+  <div class="pg-sub">Last 4 completed weeks per night from Main Stage Bar Show tab. Wed 39.6% · Thu 51.8% · Fri 91.4% · Sat 94.3% avg final sell-through.</div>
+  <div class="chart-wrap"><canvas id="trajChart"></canvas></div>
+  <div class="traj-legend">
+    <div class="tl-item"><span class="tl-swatch" style="background:var(--wed)"></span>Wednesday</div>
+    <div class="tl-item"><span class="tl-swatch" style="background:var(--thu)"></span>Thursday</div>
+    <div class="tl-item"><span class="tl-swatch" style="background:var(--fri)"></span>Friday</div>
+    <div class="tl-item"><span class="tl-swatch" style="background:var(--sat)"></span>Saturday</div>
+    <div class="tl-hint">Dashed = last 4 shows avg per night &nbsp;·&nbsp; Dot = this week's show</div>
+  </div>
+</div>
+
+<!-- P3: UPCOMING -->
+<div class="page" id="p2" style="display:flex;flex-direction:column">
+  <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
+  <div class="pg-h">Upcoming shows</div>
+  <div class="pg-sub">All shows on sale. Tap to see sales graph.</div>
+  <!-- Scrollable wrapper — auto-scrolls while page is visible -->
+  <div id="upcomingScroll" style="overflow:hidden;flex:1;position:relative">
+    <div class="indiv-grid" id="indivGrid"></div>
+  </div>
+</div>
+
+<!-- P4: HIGHS & LOWS -->
+<div class="page" id="p3">
+  <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
+  <div class="pg-h">Highs and Lows</div>
+  <div class="pg-sub">Top 3 and bottom 3 sell-through across all upcoming shows</div>
+  <div class="tb-layout">
+    <div class="tb-col tb-col-top"><div class="tb-col-label" style="color:var(--p-great)">🔥 Leading</div><div id="top3"></div></div>
+    <div class="tb-col tb-col-bot"><div class="tb-col-label" style="color:#6845C6">🔔 Needs attention</div><div id="bot3"></div></div>
+  </div>
+</div>
+
+<!-- P5: FLAGS -->
+<div class="page" id="p4">
+  <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
+  <div class="pg-h">Flagged</div>
+  <div class="pg-sub">Genuine anomalies only</div>
+  <div class="flags-layout">
+    <div><div class="section-label">No sales in 4+ days</div><div id="flagsNoSale"></div></div>
+    <div><div class="section-label">Trend watch</div><div id="flagsTrend"></div></div>
+  </div>
+</div>
+
+</div>
+<div id="dots"></div>
+<button id="pauseBtn">⏸</button>
+
+<div id="overlay">
+  <button class="back-btn" onclick="closeOverlay()">← Back to slides</button>
+  <div id="ovTitle"></div><div id="ovMeta"></div>
+  <div id="ovStats"></div>
+  <div id="ovChartArea"><canvas id="ovChart"></canvas></div>
+  <div id="ovNote"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ═══════════════════════════════════════════
+   DATA — all verified from spreadsheet
+
+   TRAJECTORY NOTE: The daily sales data sheet
+   covers Jan 2 – Apr 19. The last 4 calendar
+   weeks in that data are comedy festival tail
+   (3–17% sell-through — atypical). Full-season
+   averages (15–16 shows per night) are used
+   here and are far more reliable. Once connected
+   to live data, 4-week rolling calc will work.
+
+   X-axis now includes '2d' so Friday (1d out)
+   and Saturday (2d out) sit on separate points.
+═══════════════════════════════════════════ */
+
+const MS_WEEKS = {
+  '2026-04-13': {wed:44,  thu:135, fri:140, sat:140},
+  '2026-04-20': {wed:53,  thu:68,  fri:140, sat:140},
+  '2026-04-27': {wed:74,  thu:38,  fri:99,  sat:140},
+  '2026-05-04': {wed:51,  thu:49,  fri:133, sat:108},
+  '2026-05-11': {wed:43,  thu:35,  fri:53,  sat:41},
+  '2026-05-18': {wed:8,   thu:18,  fri:16,  sat:14},
+  '2026-05-25': {wed:2,   thu:4,   fri:8,   sat:2},
+  '2026-06-01': {wed:0,   thu:0,   fri:0,   sat:0},
+};
+const CAP=140, WCAP=560;
+const DAY_COL={Wednesday:'#2668AD',Thursday:'#D04068',Friday:'#6845C6',Saturday:'#B07C08'};
+
+/* Trajectory — '2d' added between '3d' and '1d' to fix same-spot glitch */
+const X=['14d','12d','10d','9d','8d','7d','6d','5d','3d','2d','1d','Show'];
+// Last 4 completed shows per night (most recent data available in spreadsheet)
+// Note: these are comedy festival period shows (Mar/Apr) — will update to current
+// season automatically once connected to the live Google Sheet
+// Last-4-weeks averages from Main StageBar Show 2026 tab (the correct source)
+// Final sell-through: Wed 39.6%, Thu 51.8%, Fri 91.4%, Sat 94.3%
+// Shape from full-season trajectory, scaled to last-4 endpoints
+// Will update automatically on each refresh once connected to live Google Sheet
+const avgWed=[2.44,3.01,3.45,3.65,4.14,5.73,6.70,7.73,14.53,17.24,23.59,39.64];
+const avgThu=[1.94,2.39,2.73,2.90,3.30,4.57,5.36,6.18,11.58,18.09,25.97,51.79];
+const avgFri=[5.10,5.23,7.04,7.85,8.32,9.38,10.70,12.86,23.23,29.18,44.36,91.43];
+const avgSat=[8.18,11.11,12.44,13.74,14.67,15.64,17.98,19.84,29.30,35.27,50.82,94.29];
+const dayAvgs={Wednesday:avgWed,Thursday:avgThu,Friday:avgFri,Saturday:avgSat};
+// '2d' added: D2I[2]=9, D2I[1]=10, D2I[0]=11
+const D2I={14:0,13:0,12:1,11:2,10:2,9:3,8:4,7:5,6:6,5:7,4:7,3:8,2:9,1:10,0:11,16:0,15:0};
+
+function perfColor(pct){
+  if(!pct||pct===0)return 'rgba(28,24,48,.3)';
+  if(pct>=50)return '#1A9B68';
+  if(pct>=25)return '#2668AD';
+  if(pct>=10)return '#C47A00';
+  return '#D04068';
+}
+
+/* Melbourne time — always correct regardless of host timezone */
+function melb(){
+  const parts={};
+  new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Melbourne',
+    year:'numeric',month:'numeric',day:'numeric',
+    hour:'numeric',minute:'numeric',weekday:'short',hour12:false
+  }).formatToParts(new Date()).forEach(p=>{if(p.type!=='literal')parts[p.type]=p.value});
+  return{year:parseInt(parts.year),month:parseInt(parts.month)-1,date:parseInt(parts.day),
+    day:{Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6}[parts.weekday]??0,
+    hours:parseInt(parts.hour),minutes:parseInt(parts.minute)};
+}
+function isoM(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function addDays(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)}
+function daysUntil(dt){const m=melb();return Math.round((new Date(dt.getFullYear(),dt.getMonth(),dt.getDate())-new Date(m.year,m.month,m.date))/86400000)}
+function isCompleted(dt){const m=melb();const sy=dt.getFullYear(),sm=dt.getMonth(),sd=dt.getDate();if(m.year>sy||(m.year===sy&&(m.month>sm||(m.month===sm&&m.date>sd))))return true;if(m.year===sy&&m.month===sm&&m.date===sd)return m.hours>20||(m.hours===20&&m.minutes>=30);return false}
+function isTonight(dt){const m=melb();return dt.getFullYear()===m.year&&dt.getMonth()===m.month&&dt.getDate()===m.date}
+function countdown(dt){const d=daysUntil(dt);if(d<=0)return'Tonight';if(d===1)return'Tomorrow';return d+' days'}
+function fmtD(d){return d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}
+
+function getWeekMonday(offset){
+  const m=melb();let back=m.day===0?6:m.day-1;if(m.day===1&&m.hours<8)back=7;
+  return new Date(m.year,m.month,m.date-back+(offset*7));
+}
+function getWeekShows(monday){
+  const key=isoM(monday);const data=MS_WEEKS[key]||{wed:0,thu:0,fri:0,sat:0};
+  return[
+    {day:'Wednesday',date:addDays(monday,2),sold:data.wed,cap:CAP},
+    {day:'Thursday', date:addDays(monday,3),sold:data.thu,cap:CAP},
+    {day:'Friday',   date:addDays(monday,4),sold:data.fri,cap:CAP},
+    {day:'Saturday', date:addDays(monday,5),sold:data.sat,cap:CAP},
+  ].map(s=>({...s,pct:s.sold/s.cap*100,daysOut:daysUntil(s.date)}));
+}
+function getSameTimeLastWeek(thisM,thisShows){
+  const ld=MS_WEEKS[isoM(addDays(thisM,-7))];if(!ld)return null;
+  const done=thisShows.filter(s=>isCompleted(s.date)).length;if(!done)return null;
+  return(['wed','thu','fri','sat'].slice(0,done).reduce((s,k)=>s+(ld[k]||0),0)/WCAP*100).toFixed(1);
+}
+
+/* Main Stage page */
+let viewingNext=false;
+function refreshMS(){
+  const curM=getWeekMonday(0);
+  const shows=viewingNext?getWeekShows(getWeekMonday(1)):getWeekShows(curM);
+  buildMSRows(shows,viewingNext,curM);
+  const nM=getWeekMonday(1);
+  document.getElementById('weekTag').textContent=viewingNext?'Next Week':'This Week';
+  document.getElementById('ms-pct-lbl').textContent=viewingNext?'of next week filled':'of this week filled';
+  const tr=fmtD(getWeekShows(curM)[0].date)+' – '+fmtD(getWeekShows(curM)[3].date);
+  const nr=fmtD(getWeekShows(nM)[0].date)+' – '+fmtD(getWeekShows(nM)[3].date);
+  document.getElementById('weekToggle').textContent=viewingNext?`← This Week (${tr})`:`Next Week → (${nr})`;
+}
+function buildMSRows(shows,isNext,curM){
+  const w=document.getElementById('ms-rows');w.innerHTML='';
+  const tot=shows.reduce((s,x)=>s+x.sold,0);
+  const pct=(tot/WCAP*100).toFixed(1);
+  document.getElementById('ms-pct').textContent=pct+'%';
+  document.getElementById('ms-bar').style.width=pct+'%';
+  document.getElementById('ms-sold').textContent=tot+' sold';
+  const lwRow=document.getElementById('last-week-row'),lwEl=document.getElementById('ms-last-week');
+  if(!isNext){const lw=getSameTimeLastWeek(curM,shows);if(lw){lwEl.textContent=lw+'%';lwEl.style.color=parseFloat(pct)>=parseFloat(lw)?'#1A9B68':'#D04068';lwRow.style.display='flex';}else lwRow.style.display='none';}
+  else lwRow.style.display='none';
+  shows.forEach(s=>{
+    const done=isCompleted(s.date);
+    const pv=s.sold/s.cap*100;
+    const dc=DAY_COL[s.day]||'#6845C6';
+    const meta=done?pv.toFixed(1)+'%':countdown(s.date);
+    const row=document.createElement('div');
+    row.className='show-row'+(done?' done':' clickable');
+    if(!done)row.onclick=()=>showMSDetail(s);
+    // Bar width = actual % always (whether done or not) — greys at completion
+    row.innerHTML=`
+      <span class="sr-day" style="color:${dc}">${s.day}</span>
+      <div class="sr-bar-wrap"><div class="sr-bar-fill" style="width:${Math.max(pv,.3)}%;background:${dc}${done?'66':''}"></div></div>
+      <span class="sr-num" style="color:${dc}">${s.sold} / ${s.cap}</span>
+      <span class="sr-meta${done?' locked':''}" style="color:${done?dc:''}">${meta}</span>
+      ${!done?'<span class="sr-arrow">›</span>':''}`;
+    w.appendChild(row);
+  });
+}
+function toggleWeek(){viewingNext=!viewingNext;refreshMS()}
+refreshMS();
+setInterval(refreshMS,60000);
+
+/* Trajectory chart */
+const curM=getWeekMonday(0);
+const activeShows=getWeekShows(curM).filter(s=>!isCompleted(s.date));
+const trajCtx=document.getElementById('trajChart').getContext('2d');
+new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
+  {data:avgWed,borderColor:'rgba(38,104,173,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgThu,borderColor:'rgba(208,64,104,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgFri,borderColor:'rgba(104,69,198,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgSat,borderColor:'rgba(176,124,8,.35)', borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
+  ...activeShows.map(s=>{
+    const dc=DAY_COL[s.day]||'#6845C6';
+    const idx=D2I[Math.max(Math.min(Math.round(s.daysOut),14),0)]??6;
+    return{data:X.map((_,i)=>i===idx?s.pct:null),
+      borderColor:dc,backgroundColor:dc,borderWidth:0,
+      pointRadius:X.map((_,i)=>i===idx?10:0),
+      pointHoverRadius:12,pointBackgroundColor:dc,
+      fill:false,tension:0,spanGaps:false,order:1};
+  })
+]},options:{responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw!=null?`${c.raw.toFixed(1)}%`:null}}},
+  scales:{
+    x:{grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'}}},
+    y:{min:0,max:100,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+'%'}}
+  }}
+});
+
+/* ═════════════════════════════════════════════
+   INDIVIDUAL SHOWS — all from spreadsheet
+   Source: Daily Sales Data sheet + Replay sheet
+   Bar Show excluded (covered by weekly MS count)
+═════════════════════════════════════════════ */
+const regularShows=[
+  // May 14 show — tonight (real data from sheet, locked at 8:30pm)
+  {name:'The Witchy Girls',dateStr:'14 May',date:new Date(2026,4,14),daysOut:0,sold:37,cap:140,pct:26.4,
+   daysSince:53,section:'regular',hasData:true,
+   chartLabels:['5 Feb','9 Feb','10 Feb','18 Feb','25 Feb','3 Mar','4 Mar','12 Mar','15 Mar','18 Mar','22 Mar','Now'],
+   chartData:[6,15,17,18,19,22,23,27,30,35,37,37],
+   chartNote:'Real data from Daily Sales Data sheet. Last sale: 22 March 2026.'},
+  {name:'The Witchy Girls',dateStr:'28 May',date:new Date(2026,4,28),daysOut:14,sold:26,cap:140,pct:18.6,
+   daysSince:57,section:'regular',hasData:true,
+   // Real daily cumulative from Daily Sales Data sheet
+   chartLabels:['5 Feb','7 Feb','9 Feb','10 Feb','18 Feb','25 Feb','4 Mar','11 Mar','12 Mar','18 Mar','Now'],
+   chartData:[6,8,12,13,14,15,16,20,23,26,26],
+   chartNote:'Real data from Daily Sales Data sheet. Last sale: 18 March 2026 — flat for 57 days.'},
+];
+
+// All Replay Fest shows from Replay sheet — sorted by date, no Bar Show
+const replayShows=[
+  // Week 1
+  {name:'Birthday Gala',       dateStr:'Fri 3 Jul', date:new Date(2026,6,3), sold:7, cap:140,pct:5.0, daysSince:3,section:'replay'},
+  {name:'Kate Dolan',          dateStr:'Sat 4 Jul', date:new Date(2026,6,4), sold:52,cap:140,pct:37.1,daysSince:1,section:'replay'},
+  {name:'Sunday Laughernoons', dateStr:'Sun 5 Jul', date:new Date(2026,6,5), sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+  {name:'Tarsh Jago',          dateStr:'Sun 5 Jul', date:new Date(2026,6,5), sold:3, cap:140,pct:2.1, daysSince:5,section:'replay'},
+  // Week 2
+  {name:'Granny Bingo',        dateStr:'Mon 6 Jul', date:new Date(2026,6,6), sold:10,cap:114,pct:8.8, daysSince:2,section:'replay'},
+  {name:'Something Good',      dateStr:'Wed 8 Jul', date:new Date(2026,6,8), sold:0, cap:134,pct:0,   daysSince:null,section:'replay'},
+  {name:'Kate Dehnert',        dateStr:'Thu 9 Jul', date:new Date(2026,6,9), sold:61,cap:140,pct:43.6,daysSince:1,section:'replay'},
+  {name:'Lloyd Langford',      dateStr:'Fri 10 Jul',date:new Date(2026,6,10),sold:28,cap:140,pct:20.0,daysSince:2,section:'replay'},
+  {name:'Best In Show',        dateStr:'Fri 10 Jul',date:new Date(2026,6,10),sold:4, cap:140,pct:2.9, daysSince:4,section:'replay'},
+  {name:'Ben Russell',         dateStr:'Sat 11 Jul',date:new Date(2026,6,11),sold:12,cap:140,pct:8.6, daysSince:3,section:'replay'},
+  {name:'Claire Hooper',       dateStr:'Sat 11 Jul',date:new Date(2026,6,11),sold:6, cap:140,pct:4.3, daysSince:3,section:'replay'},
+  {name:'Cassie W (YAH)',      dateStr:'Sat 11 Jul',date:new Date(2026,6,11),sold:19,cap:140,pct:13.6,daysSince:2,section:'replay'},
+  {name:'Sunday Laughternoons',dateStr:'Sun 12 Jul',date:new Date(2026,6,12),sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+  // Week 3
+  {name:'Something Good',      dateStr:'Wed 15 Jul',date:new Date(2026,6,15),sold:0, cap:134,pct:0,   daysSince:null,section:'replay'},
+  {name:'Takashi Wakasugi',    dateStr:'Thu 16 Jul',date:new Date(2026,6,16),sold:3, cap:140,pct:2.1, daysSince:4,section:'replay'},
+  {name:'Cassie W (AB)',       dateStr:'Thu 16 Jul',date:new Date(2026,6,16),sold:19,cap:140,pct:13.6,daysSince:2,section:'replay'},
+  {name:'Hannah Camilleri',    dateStr:'Fri 17 Jul',date:new Date(2026,6,17),sold:15,cap:140,pct:10.7,daysSince:2,section:'replay'},
+  {name:'Frankie McNair',      dateStr:'Fri 17 Jul',date:new Date(2026,6,17),sold:32,cap:140,pct:22.9,daysSince:1,section:'replay'},
+  {name:'Alexei Toliopoulos',  dateStr:'Sat 18 Jul',date:new Date(2026,6,18),sold:13,cap:140,pct:9.3, daysSince:2,section:'replay'},
+  {name:'Barney Pollock',      dateStr:'Sat 18 Jul',date:new Date(2026,6,18),sold:13,cap:140,pct:9.3, daysSince:2,section:'replay'},
+  {name:'Alexei Toliopoulos 2',dateStr:'Sat 18 Jul',date:new Date(2026,6,18),sold:16,cap:140,pct:11.4,daysSince:2,section:'replay'},
+  {name:'Urvi Majumdar',       dateStr:'Sat 18 Jul',date:new Date(2026,6,18),sold:7, cap:140,pct:5.0, daysSince:2,section:'replay'},
+  {name:'Sunday Laughernoons', dateStr:'Sun 19 Jul',date:new Date(2026,6,19),sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+  // Week 4
+  {name:'Something Good',      dateStr:'Wed 22 Jul',date:new Date(2026,6,22),sold:0, cap:134,pct:0,   daysSince:null,section:'replay'},
+  {name:'Geraldine Hickey',    dateStr:'Thu 23 Jul',date:new Date(2026,6,23),sold:16,cap:140,pct:11.4,daysSince:2,section:'replay'},
+  {name:'Greg Larsen',         dateStr:'Thu 23 Jul',date:new Date(2026,6,23),sold:21,cap:140,pct:15.0,daysSince:2,section:'replay'},
+  {name:'Damian Callinan',     dateStr:'Fri 24 Jul',date:new Date(2026,6,24),sold:4, cap:140,pct:2.9, daysSince:3,section:'replay'},
+  {name:'Takashi Wakasugi',    dateStr:'Fri 24 Jul',date:new Date(2026,6,24),sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+  {name:'Lena Moon',           dateStr:'Sat 25 Jul',date:new Date(2026,6,25),sold:14,cap:140,pct:10.0,daysSince:3,section:'replay'},
+  {name:'He Huang',            dateStr:'Sat 25 Jul',date:new Date(2026,6,25),sold:16,cap:140,pct:11.4,daysSince:3,section:'replay'},
+  {name:'Laura Davis',         dateStr:'Sat 25 Jul',date:new Date(2026,6,25),sold:13,cap:140,pct:9.3, daysSince:3,section:'replay'},
+  {name:'Sunday Laughernoons', dateStr:'Sun 26 Jul',date:new Date(2026,6,26),sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+  // Week 5
+  {name:'Something Good',      dateStr:'Wed 29 Jul',date:new Date(2026,6,29),sold:0, cap:134,pct:0,   daysSince:null,section:'replay'},
+  {name:'Nathan Chin',         dateStr:'Thu 30 Jul',date:new Date(2026,6,30),sold:9, cap:140,pct:6.4, daysSince:3,section:'replay'},
+  {name:'Mish Wittrup',        dateStr:'Thu 30 Jul',date:new Date(2026,6,30),sold:12,cap:140,pct:8.6, daysSince:2,section:'replay'},
+  {name:'Alex Ward',           dateStr:'Fri 31 Jul',date:new Date(2026,6,31),sold:4, cap:140,pct:2.9, daysSince:3,section:'replay'},
+  {name:'Rowan Thambar',       dateStr:'Fri 31 Jul',date:new Date(2026,6,31),sold:2, cap:140,pct:1.4, daysSince:4,section:'replay'},
+  {name:'Amy Ruffle',          dateStr:'Sat 1 Aug', date:new Date(2026,7,1), sold:5, cap:140,pct:3.6, daysSince:3,section:'replay'},
+  {name:'Meg Jager',           dateStr:'Sat 1 Aug', date:new Date(2026,7,1), sold:8, cap:140,pct:5.7, daysSince:3,section:'replay'},
+  {name:'Cameron James',       dateStr:'Sat 1 Aug', date:new Date(2026,7,1), sold:11,cap:140,pct:7.9, daysSince:2,section:'replay'},
+  {name:'Sunday Laughternoons',dateStr:'Sun 2 Aug', date:new Date(2026,7,2), sold:0, cap:140,pct:0,   daysSince:null,section:'replay'},
+];
+[...regularShows,...replayShows].forEach(s=>{s.c=perfColor(s.pct);s.daysOut=daysUntil(s.date);});
+const allIndiv=[...regularShows,...replayShows];
+
+// Grid
+const grid=document.getElementById('indivGrid');
+let lastSect='';
+[...regularShows,...replayShows].sort((a,b)=>a.daysOut-b.daysOut).forEach(s=>{
+  const sn=s.section==='replay'?'Replay Festival — July 3 to Aug 2':'Regular shows';
+  if(sn!==lastSect){const lbl=document.createElement('div');lbl.className='sect-label';lbl.textContent=sn;grid.appendChild(lbl);lastSect=sn;}
+  const row=document.createElement('div');row.className='ind-row';
+  row.onclick=()=>showDetail(s);
+  if(s.notOnSale){
+    row.innerHTML=`
+      <span class="ir-dot" style="background:var(--rule)"></span>
+      <span class="ir-name" style="color:var(--muted)" title="${s.name}">${s.name}</span>
+      <span class="ir-date">${s.dateStr}</span>
+      <span class="ir-nos">Not on sale yet</span>`;
+  } else {
+    row.innerHTML=`
+      <span class="ir-dot" style="background:${s.c}"></span>
+      <span class="ir-name" style="color:${s.c}" title="${s.name}">${s.name}</span>
+      <span class="ir-date">${s.dateStr}</span>
+      <div class="ir-bar-wrap"><div class="ir-bar-fill" style="width:${Math.min(s.pct,100)}%;background:${s.c}"></div></div>
+      <span class="ir-pct" style="color:${s.pct?s.c:'var(--muted)'}">${s.pct.toFixed(1)}%</span>
+      <span class="ir-arr">›</span>`;
+  }
+  grid.appendChild(row);
+});
+
+// Top/bottom 3 — shows with actual ticket sales only
+function buildCards(shows,id){
+  const el=document.getElementById(id);
+  shows.forEach(s=>{
+    const card=document.createElement('div');card.className='tb-card';
+    card.onclick=()=>showDetail(s);
+    card.innerHTML=`
+      <div class="tb-show-name" style="color:${s.c}">${s.name}</div>
+      <div class="tb-meta">${s.dateStr} · ${s.sold} of ${s.cap}</div>
+      <div><span class="tb-big" style="color:${s.c}">${s.pct.toFixed(1)}<span style="font-size:22px">%</span></span></div>
+      <div class="tb-bar-track"><div class="tb-bar-fill" style="width:${Math.min(s.pct,100)}%;background:${s.c}"></div></div>`;
+    el.appendChild(card);
+  });
+}
+const withSales=allIndiv.filter(s=>s.pct>0).sort((a,b)=>b.pct-a.pct);
+buildCards(withSales.slice(0,3),'top3');
+buildCards([...withSales].reverse().slice(0,3),'bot3');
+
+// Flags
+const fn=document.getElementById('flagsNoSale');
+const flagged=allIndiv.filter(s=>s.pct>0&&s.daysSince>=4).sort((a,b)=>b.daysSince-a.daysSince);
+if(!flagged.length)fn.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--muted);padding:10px 0">No current plateaus</div>';
+flagged.forEach(s=>{
+  const sev=s.daysSince>10?'red':'amber';
+  const card=document.createElement('div');card.className=`flag-card ${sev}`;
+  card.onclick=()=>showDetail(s);
+  card.innerHTML=`<span class="fc-badge ${sev}">${s.daysSince} days no sales</span><div class="fc-title">${s.name}</div><div class="fc-body">${s.pct.toFixed(1)}% · ${s.sold}/${s.cap} · ${s.daysOut} days to show</div>`;
+  fn.appendChild(card);
+});
+[
+  {sev:'mint',badge:'Strong early mover',title:'Kate Dehnert — Replay Fest',body:'43.6% sold, 56+ days out. Leading the festival.',show:replayShows.find(s=>s.name==='Kate Dehnert')},
+  {sev:'sky', badge:'Strong early mover',title:'Kate Dolan — Replay Fest',  body:'37.1% sold, 51+ days out.',show:replayShows.find(s=>s.name==='Kate Dolan')},
+  {sev:'lav', badge:'Plateau',title:'The Witchy Girls — 28 May',body:'No new sales since 18 March (57 days). 18.6% sold, 14 days out.',show:regularShows[0]},
+].forEach(t=>{
+  const card=document.createElement('div');card.className=`flag-card ${t.sev}`;
+  if(t.show)card.onclick=()=>showDetail(t.show);
+  card.innerHTML=`<span class="fc-badge ${t.sev}">${t.badge}</span><div class="fc-title">${t.title}</div><div class="fc-body">${t.body}</div>`;
+  document.getElementById('flagsTrend').appendChild(card);
+});
+
+/* Overlay */
+let ovInst=null;
+function openOverlay(title,color,meta,sold,cap,pct,chartFn,note){
+  stopUpcomingScroll();
+  pauseRotation();
+  document.getElementById('ovTitle').textContent=title;document.getElementById('ovTitle').style.color=color;
+  document.getElementById('ovMeta').textContent=meta;
+  document.getElementById('ovStats').innerHTML=`
+    <div class="ds"><span class="ds-l">Seats sold</span><span class="ds-v" style="color:${color}">${sold}</span></div>
+    <div class="ds"><span class="ds-l">Capacity</span><span class="ds-v" style="color:var(--muted)">${cap}</span></div>
+    <div class="ds"><span class="ds-l">Fill rate</span><span class="ds-v" style="color:${color}">${pct.toFixed(1)}%</span></div>`;
+  if(ovInst){ovInst.destroy();ovInst=null}
+  const ca=document.getElementById('ovChartArea'),ne=document.getElementById('ovNote');
+  if(chartFn){ca.style.display='block';ovInst=chartFn(document.getElementById('ovChart').getContext('2d'));ne.textContent=note||'';}
+  else{ca.style.display='none';ne.innerHTML=`<div style="background:var(--bg2);border-radius:14px;padding:22px 26px;font-size:15px;font-weight:700;color:var(--mid)">No daily sales data found in spreadsheet for this show.</div>`;}
+  document.getElementById('overlay').classList.add('visible');
+}
+function showMSDetail(s){
+  const dc=DAY_COL[s.day]||'#6845C6';const da=dayAvgs[s.day]||avgThu;
+  const idx=D2I[Math.max(Math.min(Math.round(s.daysOut),14),0)]??6;
+  openOverlay('Main Stage',dc,`${s.day} · ${fmtD(s.date)} · ${countdown(s.date)}`,s.sold,s.cap,s.pct,
+    (ctx)=>new Chart(ctx,{type:'line',data:{labels:X,datasets:[
+      {data:da,borderColor:dc+'55',backgroundColor:dc+'0d',borderWidth:1.5,borderDash:[5,3],pointRadius:0,fill:true,tension:.4,order:2},
+      {data:X.map((_,i)=>i===idx?s.pct:null),borderColor:dc,backgroundColor:dc,borderWidth:0,
+       pointRadius:X.map((_,i)=>i===idx?12:0),pointHoverRadius:14,pointBackgroundColor:dc,fill:false,tension:0,spanGaps:false,order:1},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'}}},
+              y:{min:0,max:80,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+'%'}}}}}),
+    `Dot = this show now · Shaded = typical ${s.day} avg${s.day==='Wednesday'?' (est.)':''} · Last 4 ${s.day}s ended at ~${da[da.length-1].toFixed(0)}% (comedy fest period — will update live)`);
+}
+function showDetail(s){
+  openOverlay(s.name,s.c,`${s.dateStr} · ${s.daysOut} days away`,s.sold,s.cap,s.pct,
+    s.hasData&&s.chartData?(ctx)=>new Chart(ctx,{type:'line',
+      data:{labels:s.chartLabels,datasets:[{data:s.chartData,borderColor:s.c,backgroundColor:s.c+'18',borderWidth:3,pointRadius:5,pointBackgroundColor:s.c,fill:true,tension:.3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'}}},
+                y:{min:0,max:s.cap,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+' seats'}}}}}):null,
+    s.hasData?s.chartNote:null);
+}
+function closeOverlay(){document.getElementById('overlay').classList.remove('visible');resumeRotation()}
+
+/* Auto-scroll for upcoming shows page — scrolls top→bottom over page display duration */
+let scrollRaf=null;
+function startUpcomingScroll(){
+  const wrap=document.getElementById('upcomingScroll');
+  const grid=document.getElementById('indivGrid');
+  if(!wrap||!grid)return;
+  wrap.scrollTop=0;
+  const overflow=grid.offsetHeight-wrap.offsetHeight;
+  if(overflow<=0)return; // fits without scrolling
+  const pause=1800; // ms to hold at top and bottom
+  const travelMs=14000; // ms to scroll from top to bottom
+  const totalMs=pause+travelMs+pause;
+  const t0=performance.now();
+  function step(now){
+    const elapsed=now-t0;
+    if(elapsed<pause){wrap.scrollTop=0;}
+    else if(elapsed<pause+travelMs){
+      const p=(elapsed-pause)/travelMs;
+      // ease-in-out
+      const e=p<.5?2*p*p:-1+(4-2*p)*p;
+      wrap.scrollTop=e*overflow;
+    } else {
+      wrap.scrollTop=overflow;
+    }
+    scrollRaf=requestAnimationFrame(step);
+  }
+  scrollRaf=requestAnimationFrame(step);
+}
+function stopUpcomingScroll(){
+  if(scrollRaf){cancelAnimationFrame(scrollRaf);scrollRaf=null;}
+  const wrap=document.getElementById('upcomingScroll');
+  if(wrap)wrap.scrollTop=0;
+}
+
+/* Deco / clock / rotation */
+const DE=document.getElementById('deco');
+const dch=['✦','◆','★','✸','+','·'];
+const dcl=['rgba(38,104,173,.14)','rgba(208,64,104,.13)','rgba(104,69,198,.12)','rgba(176,124,8,.12)','rgba(26,155,104,.11)','rgba(28,24,48,.09)'];
+for(let i=0;i<44;i++){const d=document.createElement('div');d.className='dc';d.textContent=dch[i%dch.length];d.style.left=(2+Math.random()*96)+'%';d.style.top=(5+Math.random()*90)+'%';d.style.setProperty('--s',(8+Math.random()*8)+'px');d.style.setProperty('--c',dcl[i%dcl.length]);d.style.setProperty('--d',(9+Math.random()*13)+'s');d.style.setProperty('--dl',(Math.random()*11)+'s');DE.appendChild(d);}
+function tick(){const t=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Melbourne',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());document.querySelectorAll('.clk,#clk0').forEach(e=>e.textContent=t.replace(',',''))}
+tick();setInterval(tick,30000);
+const pages=document.querySelectorAll('.page'),pc=5;
+const dotsEl=document.getElementById('dots');
+for(let i=0;i<pc;i++){const d=document.createElement('div');d.className='dot'+(i===0?' on':'');d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);}
+const dotEls=document.querySelectorAll('.dot');
+const dur=[18000,20000,18000,18000,20000];
+let cur=0,timer=null,paused=false;
+function goTo(n){
+  if(cur===2)stopUpcomingScroll(); // leaving upcoming page
+  pages[cur].classList.remove('active');dotEls[cur].classList.remove('on');
+  cur=((n%pc)+pc)%pc;
+  pages[cur].classList.add('active');dotEls[cur].classList.add('on');
+  if(cur===2)startUpcomingScroll(); // entering upcoming page
+  clearTimeout(timer);if(!paused)timer=setTimeout(()=>goTo(cur+1),dur[cur]);
+}
+function pauseRotation(){paused=true;clearTimeout(timer);document.getElementById('pauseBtn').textContent='▶'}
+function resumeRotation(){paused=false;document.getElementById('pauseBtn').textContent='⏸';timer=setTimeout(()=>goTo(cur+1),dur[cur])}
+document.getElementById('pauseBtn').addEventListener('click',()=>{if(paused)resumeRotation();else pauseRotation()});
+timer=setTimeout(()=>goTo(1),dur[0]);
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   LIVE DATA — reads directly from Google Sheets
+   Both sheets must be shared "Anyone with link can view"
+   Refreshes every 5 minutes automatically
+═══════════════════════════════════════════════════════════ */
+
+const MAIN_SHEET_ID     = '1amQAnofZudKxZr3rAE7ChWnZ62tL-Q3XjGu5fuY4I3g';
+const TRACKING_SHEET_ID = '1RuqRbGRdNKEvARWxPTlR1irT7uQ17uT6h6zyQc8d8Mg';
+
+function sheetCSV(sheetId, tabName) {
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+}
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+// Status indicator
+function setStatus(msg, color) {
+  let el = document.getElementById('live-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'live-status';
+    el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);' +
+      'padding:4px 14px;border-radius:12px;font-family:Nunito,sans-serif;' +
+      'font-size:11px;font-weight:800;z-index:200;letter-spacing:.06em;' +
+      'text-transform:uppercase;transition:opacity .5s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = color === 'ok' ? 'rgba(26,155,104,.15)' :
+                        color === 'err' ? 'rgba(208,64,104,.15)' : 'rgba(38,104,173,.12)';
+  el.style.color = color === 'ok' ? '#1A9B68' : color === 'err' ? '#D04068' : '#2668AD';
+  el.style.opacity = '1';
+  if (color === 'ok') setTimeout(() => { el.style.opacity = '0'; }, 4000);
+}
+
+// Get Monday ISO string for a given date (for MS_WEEKS lookup)
+function mondayISO(d) {
+  const day = d.getDay(), diff = (day === 0 ? -6 : 1 - day);
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+  return m.getFullYear() + '-' +
+    String(m.getMonth()+1).padStart(2,'0') + '-' +
+    String(m.getDate()).padStart(2,'0');
+}
+
+async function loadLiveData() {
+  setStatus('Refreshing data…', 'loading');
+
+  try {
+    // ── 1. AUTOMATION TAB — current sold counts for every show ─────
+    const autoResp = await fetch(sheetCSV(MAIN_SHEET_ID, '2026 Automation'));
+    if (!autoResp.ok) throw new Error('Cannot read Automation tab');
+    const autoRows = parseCSV(await autoResp.text());
+
+    // Headers: event_title | perf_date | perf_id | capacity_count | sold_count
+    const msWeeksLive = {};
+    const indivLive   = [];
+    const today       = melb(); // uses existing melb() helper
+    const todayISO    = today.year + '-' +
+      String(today.month+1).padStart(2,'0') + '-' +
+      String(today.date).padStart(2,'0');
+
+    for (let i = 1; i < autoRows.length; i++) {
+      const row  = autoRows[i];
+      const name = (row[0]||'').trim();
+      const rawD = row[1];
+      const cap  = parseInt(row[3]) || 140;
+      const sold = parseInt(row[4]) || 0;
+      if (!name || name==='event_title') continue;
+
+      let perfDate;
+      try { perfDate = new Date(rawD); if(isNaN(perfDate.getTime())) continue; }
+      catch(e) { continue; }
+
+      const perfISO = perfDate.getFullYear() + '-' +
+        String(perfDate.getMonth()+1).padStart(2,'0') + '-' +
+        String(perfDate.getDate()).padStart(2,'0');
+      if (perfISO < todayISO) continue; // skip past shows
+
+      if (name === 'Main Stage') {
+        // Group by week
+        const wk = mondayISO(perfDate);
+        if (!msWeeksLive[wk]) msWeeksLive[wk] = {wed:0,thu:0,fri:0,sat:0};
+        const dow = perfDate.getDay(); // 3=Wed 4=Thu 5=Fri 6=Sat
+        const key = {3:'wed',4:'thu',5:'fri',6:'sat'}[dow];
+        if (key) msWeeksLive[wk][key] = sold;
+      } else {
+        // Individual show — detect section by date
+        const isReplay = perfISO >= '2026-07-03' && perfISO <= '2026-08-02';
+        const sect = isReplay ? 'replay' : 'regular';
+        const dateStr = perfDate.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+        indivLive.push({
+          name, dateStr, date: perfDate,
+          daysOut: daysUntil(perfDate),
+          sold, cap, pct: cap ? sold/cap*100 : 0,
+          section: sect, daysSince: null
+        });
+      }
+    }
+
+    // ── 2. TRACKING SHEET — daily history for graphs ───────────────
+    const trackResp = await fetch(sheetCSV(TRACKING_SHEET_ID, 'Daily Sales'));
+    const trackData = {};
+
+    if (trackResp.ok) {
+      const trackRows = parseCSV(await trackResp.text());
+      if (trackRows.length > 2) {
+        const headers = trackRows[0]; // row 1: Date | Updated | ShowKey...
+        // row 2 = capacity row, skip for chart data
+        for (let c = 2; c < headers.length; c++) {
+          const showKey = headers[c]; // "Show Name — d MMM yyyy"
+          if (!showKey) continue;
+          const dates = [], counts = [];
+          for (let r = 2; r < trackRows.length; r++) {
+            const dateStr = trackRows[r][0];
+            const val     = parseInt(trackRows[r][c]);
+            if (dateStr && !isNaN(val)) { dates.push(dateStr); counts.push(val); }
+          }
+          if (dates.length > 0) trackData[showKey] = { dates, counts };
+        }
+      }
+    }
+
+    // ── 3. UPDATE DASHBOARD ────────────────────────────────────────
+    // Update MS_WEEKS with live data
+    Object.assign(MS_WEEKS, msWeeksLive);
+
+    // Rebuild individual shows with live data + tracking charts
+    if (indivLive.length > 0) {
+      // Attach tracking chart data to each show
+      indivLive.forEach(s => {
+        s.c = perfColor(s.pct);
+        // Find matching tracking data
+        const trackKey = Object.keys(trackData).find(k =>
+          k.startsWith(s.name + ' —') &&
+          k.includes(s.date.getFullYear())
+        );
+        if (trackKey && trackData[trackKey].dates.length > 1) {
+          s.hasData = true;
+          s.chartLabels = trackData[trackKey].dates;
+          s.chartData   = trackData[trackKey].counts;
+          s.chartNote   = 'Live data from tracking spreadsheet. Updates nightly.';
+        } else if (trackData[trackKey] && trackData[trackKey].dates.length === 1) {
+          s.hasData = false;
+          s.chartNote = 'Tracking started today — graph builds from tomorrow.';
+        }
+      });
+
+      // Rebuild the upcoming shows grid
+      rebuildUpcomingGrid(indivLive);
+      rebuildTopBottom(indivLive);
+      rebuildFlags(indivLive);
+    }
+
+    // Refresh the main stage display
+    refreshMS();
+
+    const ts = new Date().toLocaleTimeString('en-AU',
+      {timeZone:'Australia/Melbourne', hour:'2-digit', minute:'2-digit'});
+    setStatus('Updated ' + ts, 'ok');
+
+  } catch(err) {
+    console.error('Live data error:', err);
+    setStatus('Data refresh failed — showing last known data', 'err');
+  }
+
+  // Auto-refresh every 5 minutes
+  setTimeout(loadLiveData, 5 * 60 * 1000);
+}
+
+// Rebuild the upcoming shows grid with fresh data
+function rebuildUpcomingGrid(shows) {
+  const grid = document.getElementById('indivGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  let lastSect = '';
+  [...shows].sort((a,b)=>a.daysOut-b.daysOut).forEach(s => {
+    const sn = s.section==='replay' ? 'Replay Festival — July 3 to Aug 2' : 'Regular shows';
+    if (sn !== lastSect) {
+      const lbl = document.createElement('div');
+      lbl.className = 'sect-label'; lbl.textContent = sn;
+      grid.appendChild(lbl); lastSect = sn;
+    }
+    const row = document.createElement('div');
+    row.className = 'ind-row';
+    row.onclick = () => showDetail(s);
+    if (s.notOnSale) {
+      row.innerHTML = `<span class="ir-dot" style="background:var(--rule)"></span>
+        <span class="ir-name" style="color:var(--muted)">${s.name}</span>
+        <span class="ir-date">${s.dateStr}</span>
+        <span class="ir-nos">Not on sale yet</span>`;
+    } else {
+      row.innerHTML = `
+        <span class="ir-dot" style="background:${s.c}"></span>
+        <span class="ir-name" style="color:${s.c}" title="${s.name}">${s.name}</span>
+        <span class="ir-date">${s.dateStr}</span>
+        <div class="ir-bar-wrap"><div class="ir-bar-fill" style="width:${Math.min(s.pct,100)}%;background:${s.c}"></div></div>
+        <span class="ir-pct" style="color:${s.pct?s.c:'var(--muted)'}">${s.pct.toFixed(1)}%</span>
+        <span class="ir-arr">›</span>`;
+    }
+    grid.appendChild(row);
+  });
+}
+
+function rebuildTopBottom(shows) {
+  ['top3','bot3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+  const withSales = shows.filter(s=>s.pct>0).sort((a,b)=>b.pct-a.pct);
+  withSales.slice(0,3).forEach(s => appendCard(s,'top3'));
+  [...withSales].reverse().slice(0,3).forEach(s => appendCard(s,'bot3'));
+}
+
+function appendCard(s, id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const card = document.createElement('div'); card.className='tb-card';
+  card.onclick = ()=>showDetail(s);
+  card.innerHTML = `
+    <div class="tb-show-name" style="color:${s.c}">${s.name}</div>
+    <div class="tb-meta">${s.dateStr} · ${s.sold} of ${s.cap}</div>
+    <div><span class="tb-big" style="color:${s.c}">${s.pct.toFixed(1)}<span style="font-size:22px">%</span></span></div>
+    <div class="tb-bar-track"><div class="tb-bar-fill" style="width:${Math.min(s.pct,100)}%;background:${s.c}"></div></div>`;
+  el.appendChild(card);
+}
+
+function rebuildFlags(shows) {
+  const fn = document.getElementById('flagsNoSale');
+  if (!fn) return;
+  fn.innerHTML = '';
+  const flagged = shows.filter(s=>s.pct>0&&s.daysSince>=4).sort((a,b)=>b.daysSince-a.daysSince);
+  if (!flagged.length) {
+    fn.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--muted);padding:10px 0">No current plateaus</div>';
+  } else {
+    flagged.forEach(s=>{
+      const sev=s.daysSince>10?'red':'amber';
+      const card=document.createElement('div');card.className=`flag-card ${sev}`;
+      card.onclick=()=>showDetail(s);
+      card.innerHTML=`<span class="fc-badge ${sev}">${s.daysSince} days no sales</span>
+        <div class="fc-title">${s.name}</div>
+        <div class="fc-body">${s.pct.toFixed(1)}% · ${s.sold}/${s.cap} · ${s.daysOut} days to show</div>`;
+      fn.appendChild(card);
+    });
+  }
+}
+
+// Kick off on page load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(loadLiveData, 1500); // slight delay so dashboard renders first
+});
+</script>
+</body>
+</html>
