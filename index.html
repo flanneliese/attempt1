@@ -37,6 +37,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 .dot{width:5px;height:5px;border-radius:50%;background:var(--rule);border:1.5px solid var(--muted);cursor:pointer;transition:all .3s}
 .dot.on{background:var(--text);border-color:var(--text);transform:scale(1.5)}
 #pauseBtn{position:fixed;bottom:12px;right:22px;z-index:30;width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--rule);font-size:13px;cursor:pointer;color:var(--mid);display:flex;align-items:center;justify-content:center}
+#scrollBtns{position:fixed;right:22px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:25;opacity:0;pointer-events:none;transition:opacity .3s}
+#scrollBtns.visible{opacity:1;pointer-events:auto}
+.scroll-btn{width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--rule);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid);transition:background .2s;font-family:inherit}
+.scroll-btn:hover{background:rgba(28,24,48,.1)}
 
 /* Main Stage rows */
 .show-row{display:flex;align-items:center;background:var(--card);border-radius:16px;padding:14px 22px;box-shadow:var(--shad);border:1px solid var(--rule);margin-bottom:9px;transition:opacity .5s,filter .5s,box-shadow .2s,transform .15s}
@@ -98,6 +102,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 
 /* Flags */
 .flags-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.flags-layout.no-plateaus{grid-template-columns:1fr}
+.trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trend-grid .flag-card{margin-bottom:0}
 .section-label{font-size:10px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .flag-card{border-radius:14px;border-left:4px solid;padding:13px 17px;background:var(--card);box-shadow:var(--shad);margin-bottom:8px;border-top:1px solid var(--rule);border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);cursor:pointer;transition:box-shadow .2s,transform .15s}
 .flag-card:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(28,24,48,.12)}
@@ -190,7 +197,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 </div>
 
 <!-- P5: FLAGS -->
-<div class="page" id="p4">
+<div class="page" id="p4" style="overflow-y:auto">
   <div class="hd"><span class="hd-logo">Comedy Republic</span><div class="hd-r"><span class="live-pill"><span class="dot-l"></span>LIVE</span><span class="clk clkx"></span></div></div>
   <div class="pg-h">Flagged</div>
   <div class="pg-sub">Genuine anomalies only</div>
@@ -203,6 +210,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 </div>
 <div id="dots"></div>
 <button id="pauseBtn">⏸</button>
+
+<!-- Manual scroll arrows — appear when paused on scrollable pages -->
+<div id="scrollBtns">
+  <button class="scroll-btn" id="scrollUp" title="Scroll up">▲</button>
+  <button class="scroll-btn" id="scrollDn" title="Scroll down">▼</button>
+</div>
 
 <div id="overlay">
   <button class="back-btn" onclick="closeOverlay()">← Back to slides</button>
@@ -506,8 +519,14 @@ function buildCards(shows,id){
     el.appendChild(card);
   });
 }
-const recurringNames2=['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
-const withSales=allIndiv.filter(s=>s.pct>0&&!recurringNames2.includes(s.name)).sort((a,b)=>b.pct-a.pct);
+// For rankings: exclude format shows and Main Stage unless within 3 days
+const FORMAT_SHOWS = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons',
+                      'Something Good','Gagged','Main Stage'];
+function isFormatShow(name) {
+  return FORMAT_SHOWS.some(f => name.toLowerCase().includes(f.toLowerCase()));
+}
+const rankable = allIndiv.filter(s => !isFormatShow(s.name) || s.daysOut <= 3);
+const withSales = rankable.filter(s=>s.pct>0).sort((a,b)=>b.pct-a.pct);
 buildCards(withSales.slice(0,3),'top3');
 buildCards([...withSales].reverse().slice(0,3),'bot3');
 
@@ -525,12 +544,14 @@ function buildFlags(shows) {
   // Requires tracking sheet history — honest message until we have data
   const withPlateauData = shows.filter(s => s.pct > 0 && s.daysSince >= 4);
 
+  const layout = document.querySelector('.flags-layout');
   if (withPlateauData.length === 0) {
-    fn.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--muted);line-height:1.5;padding:6px 0">
-      Plateau detection builds as the tracking spreadsheet accumulates daily snapshots.<br>
-      Check back in a few days — any show that stops selling will appear here automatically.
-    </div>`;
+    // No plateaus — hide left column, let trend watch go full width
+    fn.closest('.flags-layout').classList.add('no-plateaus');
+    fn.closest('div').style.display = 'none'; // hide the left column div entirely
   } else {
+    fn.closest('.flags-layout').classList.remove('no-plateaus');
+    fn.closest('div').style.display = '';
     withPlateauData.sort((a,b)=>b.daysSince-a.daysSince).forEach(s => {
       const sev = s.daysSince > 10 ? 'red' : 'amber';
       const card = document.createElement('div'); card.className = `flag-card ${sev}`;
@@ -586,6 +607,13 @@ function buildFlags(shows) {
     ft.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--muted);padding:6px 0">
       No unusual trends detected right now. Flags appear automatically when shows move outside normal patterns.
     </div>`;
+  } else {
+    // Wrap in 2-col grid for full-width layout
+    const cards = Array.from(ft.children);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'trend-grid';
+    cards.forEach(c => wrapper.appendChild(c));
+    ft.appendChild(wrapper);
   }
 }
 
@@ -680,16 +708,57 @@ const dotEls=document.querySelectorAll('.dot');
 const dur=[18000,20000,18000,18000,20000];
 let cur=0,timer=null,paused=false;
 function goTo(n){
-  if(cur===2)stopUpcomingScroll(); // leaving upcoming page
+  if(cur===2)stopUpcomingScroll();
   pages[cur].classList.remove('active');dotEls[cur].classList.remove('on');
   cur=((n%pc)+pc)%pc;
   pages[cur].classList.add('active');dotEls[cur].classList.add('on');
-  if(cur===2)startUpcomingScroll(); // entering upcoming page
+  if(cur===2)startUpcomingScroll();
+  updateScrollBtns();
   clearTimeout(timer);if(!paused)timer=setTimeout(()=>goTo(cur+1),dur[cur]);
 }
-function pauseRotation(){paused=true;clearTimeout(timer);document.getElementById('pauseBtn').textContent='▶'}
-function resumeRotation(){paused=false;document.getElementById('pauseBtn').textContent='⏸';timer=setTimeout(()=>goTo(cur+1),dur[cur])}
+const SCROLLABLE_PAGES = [2, 4]; // upcoming shows (2) and flagged (4)
+
+function getScrollTarget() {
+  if (cur === 2) return document.getElementById('upcomingScroll');
+  if (cur === 4) {
+    // scroll the flagged page itself
+    return document.getElementById('p4');
+  }
+  return null;
+}
+
+function updateScrollBtns() {
+  const btns = document.getElementById('scrollBtns');
+  if (paused && SCROLLABLE_PAGES.includes(cur)) {
+    btns.classList.add('visible');
+  } else {
+    btns.classList.remove('visible');
+  }
+}
+
+function pauseRotation(){
+  paused=true;clearTimeout(timer);
+  document.getElementById('pauseBtn').textContent='▶';
+  updateScrollBtns();
+}
+function resumeRotation(){
+  paused=false;
+  document.getElementById('pauseBtn').textContent='⏸';
+  document.getElementById('scrollBtns').classList.remove('visible');
+  // restart auto-scroll on upcoming page if resuming there
+  if(cur===2) startUpcomingScroll();
+  timer=setTimeout(()=>goTo(cur+1),dur[cur]);
+}
 document.getElementById('pauseBtn').addEventListener('click',()=>{if(paused)resumeRotation();else pauseRotation()});
+
+document.getElementById('scrollUp').addEventListener('click',()=>{
+  const t = getScrollTarget();
+  if(t) t.scrollBy({top:-220, behavior:'smooth'});
+});
+document.getElementById('scrollDn').addEventListener('click',()=>{
+  const t = getScrollTarget();
+  if(t) t.scrollBy({top:220, behavior:'smooth'});
+});
 timer=setTimeout(()=>goTo(1),dur[0]);
 </script>
 
