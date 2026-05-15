@@ -478,11 +478,26 @@ const allIndiv=[...regularShows,...replayShows];
 // Grid
 const grid=document.getElementById('indivGrid');
 let lastSect='';
-const recurringFilter = s => {
-  const recurring = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
-  return !(recurring.includes(s.name) && s.daysOut > 7);
-};
-[...regularShows,...replayShows].filter(recurringFilter).sort((a,b)=>a.daysOut-b.daysOut).forEach(s=>{
+// Fortnight rule: only show the next 2 occurrences of Bar Show and Something Good
+// Sunday Laughternoons: only within 7 days
+// Everything else (incl Wax Quizzical): always shown
+const nearOnlyShows  = ['Sunday Laughernoons','Sunday Laughternoons'];
+const fortnightShows = ['Bar Show','Something Good']; // show next 2 occurrences only
+const fortnightCount = {};
+const staticFiltered = [...regularShows,...replayShows]
+  .sort((a,b)=>a.daysOut-b.daysOut)
+  .filter(s => {
+    const isNear     = nearOnlyShows.some(r => s.name.toLowerCase().includes(r.toLowerCase()));
+    const isFort     = fortnightShows.some(r => s.name.toLowerCase().includes(r.toLowerCase()));
+    const fortKey    = isFort ? fortnightShows.find(r => s.name.toLowerCase().includes(r.toLowerCase())) : null;
+    if (isNear && s.daysOut > 7) return false;
+    if (isFort) {
+      fortnightCount[fortKey] = (fortnightCount[fortKey]||0) + 1;
+      if (fortnightCount[fortKey] > 2) return false;
+    }
+    return true;
+  });
+staticFiltered.forEach(s=>{
   const sn=s.section==='replay'?'Replay Festival — July 3 to Aug 2':'Regular shows';
   if(sn!==lastSect){const lbl=document.createElement('div');lbl.className='sect-label';lbl.textContent=sn;grid.appendChild(lbl);lastSect=sn;}
   const row=document.createElement('div');row.className='ind-row';
@@ -520,8 +535,8 @@ function buildCards(shows,id){
   });
 }
 // For rankings: exclude format shows and Main Stage unless within 3 days
-const FORMAT_SHOWS = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons',
-                      'Something Good','Gagged','Main Stage'];
+const FORMAT_SHOWS = ['Bar Show','Something Good','Sunday Laughernoons','Sunday Laughternoons','Gagged','Main Stage'];
+// Note: Wax Quizzical is NOT filtered — it's an individual show
 function isFormatShow(name) {
   return FORMAT_SHOWS.some(f => name.toLowerCase().includes(f.toLowerCase()));
 }
@@ -840,6 +855,7 @@ async function loadLiveData() {
       String(today.month+1).padStart(2,'0') + '-' +
       String(today.date).padStart(2,'0');
 
+    const liveFortnightCount = {}; // tracks occurrences of fortnight-limited shows
     for (let i = 1; i < autoRows.length; i++) {
       const row  = autoRows[i];
       const name = (row[0]||'').trim();
@@ -877,9 +893,21 @@ async function loadLiveData() {
         const sect = isReplay ? 'replay' : 'regular';
         const dateStr = perfDate.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
         const daysToShow = daysUntil(perfDate);
-        // Hide recurring format shows (Bar Show, Sunday Laughternoons) if > 7 days away
-        const recurringNames = ['Bar Show','Sunday Laughernoons','Sunday Laughternoons'];
-        if (recurringNames.includes(name) && daysToShow > 7) continue;
+        // Recurring show rules:
+        // - Sunday Laughternoons: only within 7 days
+        // - Bar Show, Something Good: only next 2 occurrences (fortnight view)
+        // - Wax Quizzical: always shown (individual show)
+        const nearOnly   = ['Sunday Laughernoons','Sunday Laughternoons'];
+        const fortnight  = ['Bar Show','Something Good'];
+        const isNearOnly = nearOnly.some(r => name.toLowerCase().includes(r.toLowerCase()));
+        const isFort     = fortnight.some(r => name.toLowerCase().includes(r.toLowerCase()));
+        if (isNearOnly && daysToShow > 7) continue;
+        if (isFort) {
+          const fKey = fortnight.find(r => name.toLowerCase().includes(r.toLowerCase()));
+          if (!liveFortnightCount[fKey]) liveFortnightCount[fKey] = 0;
+          liveFortnightCount[fKey]++;
+          if (liveFortnightCount[fKey] > 2) continue;
+        }
 
         indivLive.push({
           name, dateStr, date: perfDate,
