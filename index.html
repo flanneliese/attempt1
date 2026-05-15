@@ -39,7 +39,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 #pauseBtn{position:fixed;bottom:12px;right:22px;z-index:30;width:32px;height:32px;border-radius:50%;background:var(--bg2);border:1px solid var(--rule);font-size:13px;cursor:pointer;color:var(--mid);display:flex;align-items:center;justify-content:center}
 #scrollBtns{position:fixed;right:22px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:25;opacity:0;pointer-events:none;transition:opacity .3s}
 #scrollBtns.visible{opacity:1;pointer-events:auto}
-.scroll-btn{width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--rule);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid);transition:background .2s;font-family:inherit}
+.scroll-btn{width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--rule);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid);transition:background .2s;font-family:inherit;box-shadow:var(--shad)}
 .scroll-btn:hover{background:rgba(28,24,48,.1)}
 
 /* Main Stage rows */
@@ -170,7 +170,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
     <div class="tl-item"><span class="tl-swatch" style="background:var(--thu)"></span>Thursday</div>
     <div class="tl-item"><span class="tl-swatch" style="background:var(--fri)"></span>Friday</div>
     <div class="tl-item"><span class="tl-swatch" style="background:var(--sat)"></span>Saturday</div>
-    <div class="tl-hint">Dashed = last 4 shows avg per night &nbsp;·&nbsp; Dot = this week's show</div>
+    <div class="tl-hint">Line = last 4 weeks avg &nbsp;·&nbsp; Bright dot = live &nbsp;·&nbsp; Faded dot = final (show completed)</div>
   </div>
 </div>
 
@@ -256,7 +256,7 @@ const CAP=140, WCAP=560;
 const DAY_COL={Wednesday:'#2668AD',Thursday:'#D04068',Friday:'#6845C6',Saturday:'#B07C08'};
 
 /* Trajectory — '2d' added between '3d' and '1d' to fix same-spot glitch */
-const X=['14d','12d','10d','9d','8d','7d','6d','5d','3d','2d','1d','Show'];
+const X=['14d','12d','10d','9d','8d','7d','6d','5d','3d','2d','1d','0d','Show'];
 // Last 4 completed shows per night (most recent data available in spreadsheet)
 // Note: these are comedy festival period shows (Mar/Apr) — will update to current
 // season automatically once connected to the live Google Sheet
@@ -264,13 +264,14 @@ const X=['14d','12d','10d','9d','8d','7d','6d','5d','3d','2d','1d','Show'];
 // Final sell-through: Wed 39.6%, Thu 51.8%, Fri 91.4%, Sat 94.3%
 // Shape from full-season trajectory, scaled to last-4 endpoints
 // Will update automatically on each refresh once connected to live Google Sheet
-const avgWed=[2.44,3.01,3.45,3.65,4.14,5.73,6.70,7.73,14.53,17.24,23.59,39.64];
-const avgThu=[1.94,2.39,2.73,2.90,3.30,4.57,5.36,6.18,11.58,18.09,25.97,51.79];
-const avgFri=[5.10,5.23,7.04,7.85,8.32,9.38,10.70,12.86,23.23,29.18,44.36,91.43];
-const avgSat=[8.18,11.11,12.44,13.74,14.67,15.64,17.98,19.84,29.30,35.27,50.82,94.29];
+const avgWed=[2.44,3.01,3.45,3.65,4.14,5.73,6.70,7.73,14.53,17.24,23.59,33.00,39.64];
+const avgThu=[1.94,2.39,2.73,2.90,3.30,4.57,5.36,6.18,11.58,18.09,25.97,40.00,51.79];
+const avgFri=[5.10,5.23,7.04,7.85,8.32,9.38,10.70,12.86,23.23,29.18,44.36,65.00,91.43];
+const avgSat=[8.18,11.11,12.44,13.74,14.67,15.64,17.98,19.84,29.30,35.27,50.82,74.00,94.29];
 const dayAvgs={Wednesday:avgWed,Thursday:avgThu,Friday:avgFri,Saturday:avgSat};
 // '2d' added: D2I[2]=9, D2I[1]=10, D2I[0]=11
 const D2I={14:0,13:0,12:1,11:2,10:2,9:3,8:4,7:5,6:6,5:7,4:7,3:8,2:9,1:10,0:11,16:0,15:0};
+// Note: completed shows use index 12 ('Show'); active tonight = index 11 ('0d')
 
 function perfColor(pct){
   if(!pct||pct===0)return 'rgba(28,24,48,.3)';
@@ -379,20 +380,24 @@ setInterval(refreshMS,60000);
 
 /* Trajectory chart */
 const curM=getWeekMonday(0);
-const activeShows=getWeekShows(curM).filter(s=>!isCompleted(s.date));
+// activeShows kept for compatibility — trajectory now uses full week via getWeekShows(curM).map()
 const trajCtx=document.getElementById('trajChart').getContext('2d');
-new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
-  {data:avgWed,borderColor:'rgba(38,104,173,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
-  {data:avgThu,borderColor:'rgba(208,64,104,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
-  {data:avgFri,borderColor:'rgba(104,69,198,.35)',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
-  {data:avgSat,borderColor:'rgba(176,124,8,.35)', borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:.4,order:10},
-  ...activeShows.map(s=>{
-    const dc=DAY_COL[s.day]||'#6845C6';
-    const idx=D2I[Math.max(Math.min(Math.round(s.daysOut),14),0)]??6;
+window.trajChartInst=new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
+  {data:avgWed,borderColor:'rgba(38,104,173,.55)',borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgThu,borderColor:'rgba(208,64,104,.55)',borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgFri,borderColor:'rgba(104,69,198,.55)',borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
+  {data:avgSat,borderColor:'rgba(176,124,8,.55)', borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
+  ...getWeekShows(curM).map(s=>{
+    const dc   = DAY_COL[s.day]||'#6845C6';
+    const done = isCompleted(s.date);
+    const rawD2 = Math.max(Math.min(Math.round(s.daysOut),14),0);
+    const idx  = done ? 12 : (D2I[rawD2]??6);
+    const size = done ? 8 : 10;
+    const col  = done ? dc+'99' : dc;
     return{data:X.map((_,i)=>i===idx?s.pct:null),
-      borderColor:dc,backgroundColor:dc,borderWidth:0,
-      pointRadius:X.map((_,i)=>i===idx?10:0),
-      pointHoverRadius:12,pointBackgroundColor:dc,
+      borderColor:col,backgroundColor:col,borderWidth:0,
+      pointRadius:X.map((_,i)=>i===idx?size:0),
+      pointHoverRadius:12,pointBackgroundColor:col,
       fill:false,tension:0,spanGaps:false,order:1};
   })
 ]},options:{responsive:true,maintainAspectRatio:false,
@@ -402,6 +407,37 @@ new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
     y:{min:0,max:100,grid:{color:'rgba(28,24,48,.05)'},ticks:{color:'rgba(28,24,48,.42)',font:{size:11,family:'Nunito',weight:'700'},callback:v=>v+'%'}}
   }}
 });
+
+/* ── Update trajectory chart dots from live MS data ─────────────── */
+function refreshTrajDots() {
+  const inst = window.trajChartInst;
+  if (!inst) return;
+
+  // Remove existing dot datasets (keep first 4 — the avg line datasets)
+  while (inst.data.datasets.length > 4) inst.data.datasets.pop();
+
+  // Rebuild dots from current (live-updated) MS_WEEKS
+  const curMon   = getWeekMonday(0);
+  // Include ALL week shows — completed at 'Show' endpoint, others at current position
+  const allWeekShows = getWeekShows(curMon);
+
+  allWeekShows.forEach(s => {
+    const dc   = DAY_COL[s.day] || '#6845C6';
+    const done = isCompleted(s.date);
+    const idx  = done ? 11 : (D2I[Math.max(Math.min(Math.round(s.daysOut),14),0)] ?? 6);
+    const size = done ? 8 : 10;
+    const col  = done ? dc+'99' : dc;
+    inst.data.datasets.push({
+      data: X.map((_, i) => i === idx ? s.pct : null),
+      borderColor: col, backgroundColor: col, borderWidth: 0,
+      pointRadius: X.map((_, i) => i === idx ? size : 0),
+      pointHoverRadius: 12, pointBackgroundColor: col,
+      fill: false, tension: 0, spanGaps: false, order: 1
+    });
+  });
+
+  inst.update('none'); // 'none' = no animation, instant refresh
+}
 
 /* ═════════════════════════════════════════════
    INDIVIDUAL SHOWS — all from spreadsheet
@@ -754,6 +790,7 @@ function updateScrollBtns() {
 function pauseRotation(){
   paused=true;clearTimeout(timer);
   document.getElementById('pauseBtn').textContent='▶';
+  stopUpcomingScroll(); // stop auto-scroll so manual buttons work freely
   updateScrollBtns();
 }
 function resumeRotation(){
@@ -970,8 +1007,9 @@ async function loadLiveData() {
       rebuildFlags(indivLive);
     }
 
-    // Refresh the main stage display
+    // Refresh the main stage display and trajectory chart dots
     refreshMS();
+    refreshTrajDots();
 
     const ts = new Date().toLocaleTimeString('en-AU',
       {timeZone:'Australia/Melbourne', hour:'2-digit', minute:'2-digit'});
