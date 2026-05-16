@@ -128,6 +128,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 .ds-v{font-family:'Abril Fatface',serif;font-size:48px;line-height:1}
 #ovChartArea{position:relative;height:270px;margin-bottom:14px}
 #ovNote{font-size:13px;font-weight:700;color:var(--muted)}
+
+/* ── Party bird — appears when a show hits 100% ── */
+.party-bird {
+  display:inline-flex;align-items:center;gap:4px;
+  animation:birdBounce .5s ease-in-out infinite alternate;
+  font-size:18px;margin-left:10px;
+  filter:drop-shadow(0 2px 4px rgba(208,64,104,.3));
+}
+@keyframes birdBounce {
+  from{transform:translateY(0) rotate(-8deg) scale(1)}
+  to  {transform:translateY(-5px) rotate(8deg) scale(1.1)}
+}
+.party-burst {
+  position:absolute;right:60px;top:50%;transform:translateY(-50%);
+  font-size:13px;letter-spacing:.04em;font-weight:900;
+  color:#1A9B68;opacity:0;animation:burstIn .4s .2s forwards;
+}
+@keyframes burstIn {
+  from{opacity:0;transform:translateY(-50%) scale(.7)}
+  to  {opacity:1;transform:translateY(-50%) scale(1)}
+}
+/* Trajectory 100% glow */
+.traj-100 {
+  position:absolute;bottom:54px;right:22px;
+  font-size:13px;font-weight:900;color:#1A9B68;
+  animation:birdBounce .5s ease-in-out infinite alternate;
+  pointer-events:none;
+}
 </style>
 </head>
 <body>
@@ -342,18 +370,22 @@ function buildMSRows(shows,isNext,curM){
   const lwRow=document.getElementById('last-week-row'),lwEl=document.getElementById('ms-last-week');
   const lwLabel=document.getElementById('lw-label');
   if(!isNext){
-    const lw=getSameTimeLastWeek(curM,shows);
-    if(lw&&parseFloat(lw)>0){
-      lwEl.textContent=lw+'%';
-      lwEl.style.color=parseFloat(pct)>=parseFloat(lw)?'#1A9B68':'#D04068';
-      if(lwLabel)lwLabel.textContent='Last week same point:';
-      lwRow.style.display='flex';
+    // Prefer tracking sheet data (real nightly snapshots) over static MS_WEEKS
+    const trackingLW = window.lwTrackingPct;
+    const staticLW   = getSameTimeLastWeek(curM,shows);
+    const lw = trackingLW !== null && trackingLW !== undefined ? trackingLW : staticLW;
+
+    if(lw && parseFloat(lw) > 0){
+      lwEl.textContent = lw + '%';
+      lwEl.style.color = parseFloat(pct) >= parseFloat(lw) ? '#1A9B68' : '#D04068';
+      const src = (trackingLW !== null && trackingLW !== undefined) ? ' (tracked)' : '';
+      if(lwLabel) lwLabel.textContent = 'Last week same point:';
+      lwRow.style.display = 'flex';
     } else {
-      // No comparison data yet — show friendly message instead of hiding
-      lwEl.textContent='—';
-      lwEl.style.color='var(--muted)';
-      if(lwLabel)lwLabel.textContent='More comparison data next week';
-      lwRow.style.display='flex';
+      lwEl.textContent = '—';
+      lwEl.style.color = 'var(--muted)';
+      if(lwLabel) lwLabel.textContent = 'Comparison builds after one full tracked week';
+      lwRow.style.display = 'flex';
     }
   } else lwRow.style.display='none';
   shows.forEach(s=>{
@@ -438,6 +470,19 @@ function refreshTrajDots() {
   });
 
   inst.update('none'); // 'none' = no animation, instant refresh
+
+  // Show party bird near chart if any dot is at 100%
+  const existing = document.getElementById('traj100');
+  const hasHundred = allWeekShows.some(s => Math.round(s.pct) >= 100);
+  if (hasHundred && !existing) {
+    const el = document.createElement('div');
+    el.id = 'traj100'; el.className = 'traj-100';
+    el.innerHTML = '🐦&zwj;⭐ Sold out!';
+    document.getElementById('p1').style.position = 'relative';
+    document.getElementById('p1').appendChild(el);
+  } else if (!hasHundred && existing) {
+    existing.remove();
+  }
 }
 
 /* ═════════════════════════════════════════════
@@ -917,9 +962,11 @@ async function loadLiveData() {
       if (name === 'Main Stage') {
         if (daysAgo > 6) continue;
         const wk  = mondayISO(perfDate);
-        if (!msWeeksLive[wk]) msWeeksLive[wk] = {wed:0,thu:0,fri:0,sat:0};
+        // Seed from static MS_WEEKS so past days (Wed/Thu) keep their values
+        // when Red61 no longer includes them in the Automation tab export
+        if (!msWeeksLive[wk]) msWeeksLive[wk] = Object.assign({wed:0,thu:0,fri:0,sat:0}, MS_WEEKS[wk]||{});
         const key = {3:'wed',4:'thu',5:'fri',6:'sat'}[perfDate.getDay()];
-        if (key) msWeeksLive[wk][key] = sold;
+        if (key) msWeeksLive[wk][key] = sold; // only override days that ARE in the tab
       } else {
         if (perfISO < todayISO) continue;
         const isReplay = perfISO >= '2026-07-03' && perfISO <= '2026-08-02';
@@ -977,7 +1024,44 @@ async function loadLiveData() {
       }
     }
 
-    // ── 3. UPDATE DASHBOARD ────────────────────────────────────────
+    // ── 3. READ tracking sheet for last-week comparison ──────────
+    // Only show "last week same point" if we have real tracking data for that date
+    try {
+      if (trackResp.ok && trackRows.length > 2) {
+        // Find last week's equivalent date
+        const m = melb();
+        const todayD = new Date(m.year, m.month, m.date);
+        const lastWkD = new Date(todayD.getTime() - 7 * 86400000);
+        const lastWkISO = lastWkD.getFullYear() + '-' +
+          String(lastWkD.getMonth()+1).padStart(2,'0') + '-' +
+          String(lastWkD.getDate()).padStart(2,'0');
+
+        // Find tracking row for last week's date
+        const headers2 = trackRows[0];
+        const lwRowIdx = trackRows.findIndex((r,i) => i >= 2 && String(r[0]) === lastWkISO);
+
+        if (lwRowIdx > -1) {
+          // Sum Main Stage sold counts for last week
+          let lwSold = 0;
+          headers2.forEach((h, ci) => {
+            if (String(h).toLowerCase().includes('main stage') && ci >= 2) {
+              const v = parseInt(trackRows[lwRowIdx][ci]) || 0;
+              lwSold += v;
+            }
+          });
+          if (lwSold > 0) {
+            // Store for use in refreshMS
+            window.lwTrackingPct = (lwSold / 560 * 100).toFixed(1);
+          } else {
+            window.lwTrackingPct = null; // not enough data
+          }
+        } else {
+          window.lwTrackingPct = null; // last week's date not in tracking sheet yet
+        }
+      }
+    } catch(e) { window.lwTrackingPct = null; }
+
+    // ── 4. UPDATE DASHBOARD ────────────────────────────────────────
     // Update MS_WEEKS with live data
     Object.assign(MS_WEEKS, msWeeksLive);
 
