@@ -171,7 +171,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
     <div class="tl-item"><span class="tl-swatch" style="background:var(--thu)"></span>Thursday</div>
     <div class="tl-item"><span class="tl-swatch" style="background:var(--fri)"></span>Friday</div>
     <div class="tl-item"><span class="tl-swatch" style="background:var(--sat)"></span>Saturday</div>
-    <div class="tl-hint">Line endpoint = last 4 weeks show night avg &nbsp;·&nbsp; Faded dot = this week's actual result</div>
+    <div class="tl-hint">Solid dot = this week &nbsp;·&nbsp; Hollow dot = next week &nbsp;·&nbsp; Faded = completed</div>
   </div>
 </div>
 
@@ -392,6 +392,7 @@ window.trajChartInst=new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
   {data:avgThu,borderColor:'rgba(208,64,104,.55)',borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
   {data:avgFri,borderColor:'rgba(104,69,198,.55)',borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
   {data:avgSat,borderColor:'rgba(176,124,8,.55)', borderWidth:2,borderDash:[],pointRadius:0,fill:false,tension:.4,order:10},
+  // This week — solid dots
   ...getWeekShows(curM).map(s=>{
     const dc   = DAY_COL[s.day]||'#6845C6';
     const done = s.daysOut < 0 || isCompleted(s.date);
@@ -404,6 +405,17 @@ window.trajChartInst=new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
       pointRadius:X.map((_,i)=>i===idx?size:0),
       pointHoverRadius:12,pointBackgroundColor:col,
       fill:false,tension:0,spanGaps:false,order:1};
+  }),
+  // Next week — hollow ghost dots at their days-out position
+  ...getWeekShows(getWeekMonday(1)).map(s=>{
+    const dc  = DAY_COL[s.day]||'#6845C6';
+    const rawD = Math.max(Math.min(Math.round(s.daysOut),14),0);
+    const idx = D2I[rawD]??0;
+    return{data:X.map((_,i)=>i===idx?s.pct:null),
+      borderColor:dc+'55',backgroundColor:'transparent',borderWidth:2,
+      pointRadius:X.map((_,i)=>i===idx?8:0),
+      pointHoverRadius:10,pointBackgroundColor:'transparent',
+      fill:false,tension:0,spanGaps:false,order:2};
   })
 ]},options:{responsive:true,maintainAspectRatio:false,
   plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw!=null?`${c.raw.toFixed(1)}%`:null}}},
@@ -1129,6 +1141,81 @@ function appendCard(s, id) {
 
 function rebuildFlags(shows) {
   buildFlags(shows);
+}
+
+// ── MS Night detail overlay ──────────────────────────────────────
+function showMSNightDetail(s) {
+  // Build average data for this day
+  const avgData = {wed:avgWed, thu:avgThu, fri:avgFri, sat:avgSat}[s.day];
+  if (!avgData) return;
+
+  const done   = s.daysOut < 0 || isCompleted(s.date);
+  const dayName = {wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'}[s.day];
+  const dc     = DAY_COL[s.day] || '#6845C6';
+  const rawD   = Math.max(Math.min(Math.round(s.daysOut),14),0);
+  const curIdx = done ? 11 : (D2I[rawD]??6); // where they are on the curve
+
+  // Average at this point
+  const avgAtNow = avgData[curIdx];
+  const diff = avgAtNow ? (s.pct - avgAtNow).toFixed(1) : null;
+  const diffStr = diff !== null
+    ? (diff >= 0 ? '+'+diff+'% vs avg' : diff+'% vs avg')
+    : '';
+  const diffCol = diff >= 0 ? '#1A9B68' : '#D04068';
+
+  // Reuse existing overlay
+  const ov = document.getElementById('detailOverlay');
+  const ob = document.getElementById('detailBody');
+  if (!ov || !ob) return;
+
+  ob.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:2px">This week · Main Stage</div>
+      <div style="font-size:32px;font-weight:900;font-family:'Abril Fatface',serif;color:${dc}">${dayName}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${s.sold} of ${s.cap} seats · ${s.pct.toFixed(1)}%
+        ${diff !== null ? `<span style="color:${diffCol};font-weight:800;margin-left:8px">${diffStr}</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;height:200px;margin-bottom:12px">
+      <canvas id="msNightChart"></canvas>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">
+      Average curve from last 4 completed weeks of ${dayName} Main Stage shows
+    </div>`;
+
+  ov.style.display = 'flex';
+  ov.addEventListener('click', e => { if(e.target===ov) ov.style.display='none'; }, {once:true});
+
+  // Draw chart
+  setTimeout(()=>{
+    const ctx = document.getElementById('msNightChart');
+    if (!ctx) return;
+    if (ctx._chartInst) ctx._chartInst.destroy();
+
+    // Dot dataset — just the current position
+    const dotData = X.map((_,i)=>i===curIdx?s.pct:null);
+
+    ctx._chartInst = new Chart(ctx.getContext('2d'), {
+      type:'line',
+      data:{datasets:[
+        {data:avgData,borderColor:dc+'66',borderWidth:2,borderDash:[],
+         pointRadius:0,fill:false,tension:.4,spanGaps:true,order:2},
+        {data:dotData,borderColor:dc,backgroundColor:dc,borderWidth:0,
+         pointRadius:X.map((_,i)=>i===curIdx?10:0),
+         pointBackgroundColor:dc,fill:false,tension:0,spanGaps:false,order:1}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{
+          label:c=>c.datasetIndex===0?'Avg '+c.parsed.y.toFixed(1)+'%':dayName+' this week: '+c.parsed.y.toFixed(1)+'%'
+        }}},
+        scales:{
+          x:{type:'category',labels:X,grid:{color:'rgba(28,24,48,.04)'},
+             ticks:{color:'rgba(28,24,48,.42)',font:{size:10,family:'Nunito',weight:'700'}}},
+          y:{min:0,max:100,grid:{color:'rgba(28,24,48,.04)'},
+             ticks:{color:'rgba(28,24,48,.42)',font:{size:10,family:'Nunito',weight:'700'},callback:v=>v+'%'}}
+        }}
+    });
+  }, 50);
 }
 
 // Kick off on page load
