@@ -129,33 +129,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 #ovChartArea{position:relative;height:270px;margin-bottom:14px}
 #ovNote{font-size:13px;font-weight:700;color:var(--muted)}
 
-/* ── Party bird — appears when a show hits 100% ── */
-.party-bird {
-  display:inline-flex;align-items:center;gap:4px;
-  animation:birdBounce .5s ease-in-out infinite alternate;
-  font-size:18px;margin-left:10px;
-  filter:drop-shadow(0 2px 4px rgba(208,64,104,.3));
-}
-@keyframes birdBounce {
-  from{transform:translateY(0) rotate(-8deg) scale(1)}
-  to  {transform:translateY(-5px) rotate(8deg) scale(1.1)}
-}
-.party-burst {
-  position:absolute;right:60px;top:50%;transform:translateY(-50%);
-  font-size:13px;letter-spacing:.04em;font-weight:900;
-  color:#1A9B68;opacity:0;animation:burstIn .4s .2s forwards;
-}
-@keyframes burstIn {
-  from{opacity:0;transform:translateY(-50%) scale(.7)}
-  to  {opacity:1;transform:translateY(-50%) scale(1)}
-}
-/* Trajectory 100% glow */
-.traj-100 {
-  position:absolute;bottom:54px;right:22px;
-  font-size:13px;font-weight:900;color:#1A9B68;
-  animation:birdBounce .5s ease-in-out infinite alternate;
-  pointer-events:none;
-}
 </style>
 </head>
 <body>
@@ -471,18 +444,6 @@ function refreshTrajDots() {
 
   inst.update('none'); // 'none' = no animation, instant refresh
 
-  // Show party bird near chart if any dot is at 100%
-  const existing = document.getElementById('traj100');
-  const hasHundred = allWeekShows.some(s => Math.round(s.pct) >= 100);
-  if (hasHundred && !existing) {
-    const el = document.createElement('div');
-    el.id = 'traj100'; el.className = 'traj-100';
-    el.innerHTML = '🐦&zwj;⭐ Sold out!';
-    document.getElementById('p1').style.position = 'relative';
-    document.getElementById('p1').appendChild(el);
-  } else if (!hasHundred && existing) {
-    existing.remove();
-  }
 }
 
 /* ═════════════════════════════════════════════
