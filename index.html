@@ -368,7 +368,9 @@ function buildMSRows(shows,isNext,curM){
     const meta=done?pv.toFixed(1)+'%':countdown(s.date);
     const row=document.createElement('div');
     row.className='show-row'+(done?' done':' clickable');
-    if(!done)row.onclick=()=>showMSDetail(s);
+    // All rows clickable — completed nights show final result vs avg, upcoming show live position
+    row.style.cursor='pointer';
+    row.onclick=()=>showMSNightDetail(s);
     // Bar width = actual % always (whether done or not) — greys at completion
     row.innerHTML=`
       <span class="sr-day" style="color:${dc}">${s.day}</span>
@@ -412,9 +414,9 @@ window.trajChartInst=new Chart(trajCtx,{type:'line',data:{labels:X,datasets:[
     const rawD = Math.max(Math.min(Math.round(s.daysOut),14),0);
     const idx = D2I[rawD]??0;
     return{data:X.map((_,i)=>i===idx?s.pct:null),
-      borderColor:dc+'55',backgroundColor:'transparent',borderWidth:2,
-      pointRadius:X.map((_,i)=>i===idx?8:0),
-      pointHoverRadius:10,pointBackgroundColor:'transparent',
+      borderColor:dc+'99',backgroundColor:dc+'22',borderWidth:2.5,
+      pointRadius:X.map((_,i)=>i===idx?10:0),
+      pointHoverRadius:12,pointBackgroundColor:dc+'22',
       fill:false,tension:0,spanGaps:false,order:2};
   })
 ]},options:{responsive:true,maintainAspectRatio:false,
@@ -454,8 +456,21 @@ function refreshTrajDots() {
     });
   });
 
-  inst.update('none'); // 'none' = no animation, instant refresh
+  // Next week — hollow ghost dots
+  getWeekShows(getWeekMonday(1)).forEach(s => {
+    const dc  = DAY_COL[s.day] || '#6845C6';
+    const rawD = Math.max(Math.min(Math.round(s.daysOut),14),0);
+    const idx = D2I[rawD] ?? 0;
+    inst.data.datasets.push({
+      data: X.map((_, i) => i === idx ? s.pct : null),
+      borderColor: dc+'99', backgroundColor: dc+'22', borderWidth: 2.5,
+      pointRadius: X.map((_, i) => i === idx ? 10 : 0),
+      pointHoverRadius: 12, pointBackgroundColor: dc+'22',
+      fill: false, tension: 0, spanGaps: false, order: 2
+    });
+  });
 
+  inst.update('none');
 }
 
 /* ═════════════════════════════════════════════
@@ -1146,14 +1161,16 @@ function rebuildFlags(shows) {
 // ── MS Night detail overlay ──────────────────────────────────────
 function showMSNightDetail(s) {
   // Build average data for this day
-  const avgData = {wed:avgWed, thu:avgThu, fri:avgFri, sat:avgSat}[s.day];
+  // s.day is full name e.g. 'Wednesday' — map to short key for avg lookup
+  const dayKey = s.day.toLowerCase().slice(0,3); // 'wed','thu','fri','sat'
+  const avgData = {wed:avgWed, thu:avgThu, fri:avgFri, sat:avgSat}[dayKey];
   if (!avgData) return;
 
   const done   = s.daysOut < 0 || isCompleted(s.date);
-  const dayName = {wed:'Wednesday',thu:'Thursday',fri:'Friday',sat:'Saturday'}[s.day];
+  const dayName = s.day; // already full name
   const dc     = DAY_COL[s.day] || '#6845C6';
   const rawD   = Math.max(Math.min(Math.round(s.daysOut),14),0);
-  const curIdx = done ? 11 : (D2I[rawD]??6); // where they are on the curve
+  const curIdx = done ? 11 : (D2I[rawD]??6);
 
   // Average at this point
   const avgAtNow = avgData[curIdx];
